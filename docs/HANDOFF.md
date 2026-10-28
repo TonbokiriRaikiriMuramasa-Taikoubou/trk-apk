@@ -57,7 +57,7 @@ cd android && ./gradlew assembleDebug
 - `npm run check`：**715件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
 - [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40751690423)：`9c53d5c` でJavaを含め成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
-- Android instrumentationに、実際のPiP開始とWebViewへの通知を検証するテストを追加。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。該当コミットのActions実行結果を確認すること。このテストも動画・音声再生や物理端末を検証しない。
+- [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。初回はinstrumentation切断、次回はエミュレーター準備段階で失敗しており原因未特定。成功した再実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 
