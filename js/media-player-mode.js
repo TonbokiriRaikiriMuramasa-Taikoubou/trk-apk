@@ -153,7 +153,7 @@ let mediaOpen = false, holdTimer = 0, longPressed = false;
 let repeatMode = core.settings.mediaRepeat || "off", shuffle = !!core.settings.mediaShuffle;
 let mediaRate = Number(core.settings.mediaRate) || 1, sleepTimer = 0, sleepUntil = 0, tickTimer = 0;
 let seeking = false, queueFilter = "", videoBinding = null;
-let reverseActive = false, reverseLoading = false, reverseTimer = 0, reverseSource = null, reverseGain = null;
+let reverseActive = false, reverseLoading = false, reverseTimer = 0, reverseSource = null, reverseGain = null, reverseAttempt = 0;
 let reverseBuffer = null, reverseBufferKey = "", reverseVideoMuted = false, reverseStartAt = 0, reverseClockAt = 0;
 let loopTimer = 0;
 let loopA = null, loopB = null, loopActive = false, loopKeyDown = false;
@@ -433,6 +433,7 @@ function stopReverseAudio() {
 }
 function stopReverse(resume = false, silent = true) {
   if (!reverseActive && !reverseLoading) return;
+  reverseAttempt++;
   reverseActive = false; reverseLoading = false; clearInterval(reverseTimer); reverseTimer = 0;
   stopReverseAudio();
   core.video.muted = reverseVideoMuted; core.video.playbackRate = mediaRate;
@@ -440,6 +441,12 @@ function stopReverse(resume = false, silent = true) {
   if (!silent && typeof showToast === "function") window.Trk.play.showToast(tr("mediaForward"));
   renderMedia();
 }
+function stopReverseWhenBackgroundDisallowed() {
+  if (document.hidden && window.TrkApkPip?.allowsPlaybackStart?.() === false && (reverseActive || reverseLoading)) {
+    stopReverse(false, true);
+  }
+}
+document.addEventListener("visibilitychange", stopReverseWhenBackgroundDisallowed, true);
 async function reverseAudioForCurrentSong() {
   const key = (core.currentSong && core.currentSong.key) || mediaPositionKey();
   if (reverseBuffer && reverseBufferKey === key) return reverseBuffer;
@@ -481,6 +488,7 @@ function reverseTick() {
 async function startReverseAt(position, restart = false) {
   if (!core.videoReady || !Number.isFinite(core.video.duration) || core.video.duration <= 0) return;
   if (reverseLoading && !restart) return;
+  const attempt = ++reverseAttempt;
   if (!reverseActive) { reverseVideoMuted = !!core.video.muted; reverseActive = true; }
   reverseLoading = true; clearInterval(reverseTimer); reverseTimer = 0; stopReverseAudio();
   core.video.pause(); core.video.muted = true;
@@ -491,15 +499,17 @@ async function startReverseAt(position, restart = false) {
   let buffer = null;
   try { const gestureAC = typeof getAC === "function" ? window.Trk.media.getAC() : null; if (gestureAC && gestureAC.state === "suspended") gestureAC.resume().catch(() => {}); } catch (_) {}
   try { buffer = await reverseAudioForCurrentSong(); } catch (_) {
+    if (attempt !== reverseAttempt) return;
     reverseBuffer = null; reverseBufferKey = "";
     if (typeof showToast === "function" && !restart) window.Trk.play.showToast(tr("mediaReverseUnavailable"));
   }
-  if (!reverseActive || !core.videoReady) return;
+  if (attempt !== reverseAttempt || !reverseActive || !core.videoReady) return;
   reverseHasAudio = false;
   const ac = buffer && typeof getAC === "function" ? window.Trk.media.getAC() : null;
   if (buffer && ac) {
     try {
       if (ac.state === "suspended") await ac.resume();
+      if (attempt !== reverseAttempt || !reverseActive || !core.videoReady) return;
       const src = ac.createBufferSource(), gain = ac.createGain();
       src.buffer = buffer; src.playbackRate.value = Math.max(.05, Math.abs(mediaRate || 1));
       gain.gain.value = reverseVideoMuted ? 0 : Math.max(0, Math.min(1, Number(core.settings.musicVolume) || 0));
@@ -508,7 +518,10 @@ async function startReverseAt(position, restart = false) {
       reverseSource = src; reverseGain = gain; reverseHasAudio = true;
       src.onended = () => { if (reverseActive && reverseSource === src) reverseTick(); };
       src.start(0, offset);
-    } catch (_) { reverseHasAudio = false; stopReverseAudio(); }
+    } catch (_) {
+      if (attempt !== reverseAttempt) return;
+      reverseHasAudio = false; stopReverseAudio();
+    }
   }
   reverseStartAt = start; reverseClockAt = reverseClockSeconds(); reverseLoading = false;
   reverseTimer = setInterval(reverseTick, 25);
@@ -744,7 +757,7 @@ async function playSong(it, fromStart = true) {
   } else if (!core.videoReady) {
     await window.Trk.library.selectSong(it);
   }
-  if (!mediaActive() || core.currentSong !== it || !core.videoReady) { renderMedia(); return; }
+  if (!mediaActive() || core.currentSong !== it || !core.videoReady || window.TrkApkPip?.allowsPlaybackStart?.() === false) { renderMedia(); return; }
   if (fromStart) { try { core.video.currentTime = savedMediaPosition({ resume: true }); } catch (_) {} }  /* ⏪ 続きから再生のときだけ巻き戻す（trk164） */
   core.video.muted = false; core.video.volume = core.settings.musicVolume; setRate(mediaRate);
   try { await core.video.play(); } catch (_) { showMediaStatus("mediaLoadFailed"); }
@@ -800,6 +813,7 @@ function endedMedia() {
     renderMedia(); updateMediaSession();
     return;
   }
+  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) { saveMediaPosition(true); renderMedia(); updateMediaSession(); return; }
   if (repeatMode === "one") { saveMediaPosition(true); try { core.video.currentTime = 0; } catch (_) {} core.video.play().catch(() => {}); }
   else if (repeatMode === "all" || shuffle) stepMedia(1);
   else saveMediaPosition(true);
@@ -855,14 +869,19 @@ async function sessionSong(dir) {
   const it = pick(); if (!it) return;
   if (core.phase !== "title" && typeof toTitle === "function") window.Trk.play.toTitle();
   await window.Trk.library.selectSong(it);
+  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
   if (core.settings.autoPlay && core.phase === "title" && core.videoReady && core.chart.length && core.currentSong === it && typeof startGame === "function") window.Trk.play.startGame();
 }
 function installMediaSession() {
   const ms = navigator.mediaSession; if (!ms) return;
   const act = (name, fn) => { try { ms.setActionHandler(name, fn); } catch (_) {} };
+  // Android antenna OFF stops hidden playback, except while PiP is active.
+  // The Android-only policy is absent on the existing browser/PWA build.
+  const mayStart = () => !window.TrkApkPip || typeof window.TrkApkPip.allowsPlaybackStart !== "function" || window.TrkApkPip.allowsPlaybackStart();
   // System play/pause actions are commands, not toggle requests. Repeated
   // Bluetooth or notification commands must never reverse the requested state.
   act("play", () => {
+    if (!mayStart()) return;
     if (mediaActive()) {
       if (!reverseActive && !reverseLoading && (core.video.paused || core.video.ended)) playPause();
     } else if (core.phase === "paused") window.Trk.play.resumeGame();
@@ -870,12 +889,17 @@ function installMediaSession() {
   });
   act("pause", () => {
     if (mediaActive()) {
-      if (reverseActive || reverseLoading || !core.video.paused) playPause();
+      // The UI toggle exits reverse by starting forward playback; a system
+      // pause command must stop reverse without resuming audio.
+      if (reverseActive || reverseLoading) { stopReverse(false, true); if (!core.video.paused) core.video.pause(); }
+      else if (!core.video.paused) playPause();
     } else if (core.phase === "playing") window.Trk.play.pauseGame();
     else if (!core.video.paused) core.video.pause();
   });
-  act("previoustrack", () => mediaActive() ? stepMedia(-1) : sessionSong(-1));
-  act("nexttrack", () => mediaActive() ? stepMedia(1) : sessionSong(1));
+  // Selecting a track can auto-start preview or game playback, so do not
+  // dispatch these commands when background starts are disallowed.
+  act("previoustrack", () => { if (mayStart()) return mediaActive() ? stepMedia(-1) : sessionSong(-1); });
+  act("nexttrack", () => { if (mayStart()) return mediaActive() ? stepMedia(1) : sessionSong(1); });
   act("seekbackward", d => seekBy(-(d && d.seekOffset || 10)));
   act("seekforward", d => seekBy(d && d.seekOffset || 10));
   act("seekto", d => { if (Number.isFinite(d && d.seekTime) && core.videoReady) { if (reverseActive || reverseLoading) stopReverse(false, true); core.video.currentTime = Math.max(0, Math.min(core.video.duration || 0, d.seekTime)); } });

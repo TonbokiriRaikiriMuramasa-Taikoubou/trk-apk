@@ -4187,6 +4187,8 @@ function fadeTo(target, ms) {
   fadeRaf = requestAnimationFrame(step);
 }
 function startPreview() {
+  // A selection can finish loading after Android has moved to the background.
+  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
   if (window._trkMediaPlayerMode || !core.settings.previewEnabled || core.phase !== "title" || !core.currentSong || !video.src || !isFinite(video.duration)) return;
   if (!video.paused) return;
   cancelAnimationFrame(fadeRaf);
@@ -4211,6 +4213,7 @@ function previewContinue() {
 }
 video.addEventListener("canplay", () => { if (previewPending) { previewPending = false; startPreview(); } });
 video.addEventListener("ended", () => {
+  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
   if (window._trkMediaPlayerMode || core.phase !== "title" || !core.currentSong || !core.settings.previewEnabled) return;
   try { video.currentTime = previewStartFor(); } catch (_) {}
   video.play().catch(() => {});
