@@ -646,7 +646,7 @@ packsReady.then(() => window.Trk.library.initLibrary()).catch(e => console.error
 
 /* PWA：オフラインでも開けるようにする（HTTPS か localhost のときだけ）。
    キャッシュの整理は sw.js が trk- で始まる名前だけを消すので、ほかのサイトに影響しません。 */
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
+if ("serviceWorker" in navigator && location.protocol !== "file:" && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
   navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache:"none" })
     .catch(() => { /* オフライン用のキャッシュが無くても、ゲームはそのまま遊べます */ });
 }

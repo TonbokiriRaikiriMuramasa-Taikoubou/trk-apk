@@ -1,4 +1,4 @@
-package com.getcapacitor.myapp;
+package com.trk.agrg;
 
 import static org.junit.Assert.*;
 

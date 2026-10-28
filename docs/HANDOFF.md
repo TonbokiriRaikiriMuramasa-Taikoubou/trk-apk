@@ -1,30 +1,48 @@
 # trk! Android版 開発引き継ぎ
 
-最終更新：2026-10-29。これは **開発途中のソース**であり、APKの完成版・配布版ではありません。
+最終更新：2026-10-29。これは **開発途中のソース**です。APKは未作成で、Androidネイティブコードのビルド・実機検証も未実施です。画中絵や再生継続は試作であり、完成・配布可能とは扱いません。
 
-## 1. 現在地
+## 1. 取り込み元と資料
 
-- リポジトリ：`TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` の commit `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214、配布名 1.1.4）を土台にした。Drive 上の1.1.4 ZIPとはバイト比較していない。
-- 既存のWebアプリを Capacitor 8 で包む初期実装。アプリID `com.trk.agrg`、Android minSdk 24、target/compileSdk 36、開発用 version `0.1.0-dev`。上流の 1.1.4 と Android版の開発バージョンは別物。
-- 上流の詳しい現状・設計・移行・過去のデスクトップ配布手順は [上流 trk214 の引き継ぎ](HANDOFF-UPSTREAM-trk214.md) にそのまま保存した。さらに古い履歴は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。この文書と食い違うAndroid版の仕様は本書を優先する。
-- 詳細な設計・根拠・Android権限の調査は [apk-development.md](apk-development.md)。安全性は [SECURITY.md](SECURITY.md)、検査の限界は [QUALITY-CHECKS.md](QUALITY-CHECKS.md)。
+- このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` のコミット `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基に、Capacitor 8とAndroid向けUIを追加した。Google Driveの1.1.4 ZIPとはバイト比較していない。
+- 現在のアプリIDは仮の `com.trk.agrg`、minSdk 24、target／compileSdk 36、開発版 `0.1.0-dev`。上流の配布バージョンとは別物。
+- 上流の引き継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、さらに古い履歴は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。Android版の現状はこの文書を優先する。設計は [apk-development.md](apk-development.md)、Media3・イヤホン操作は [media3-plan.md](media3-plan.md)、安全性は [SECURITY.md](SECURITY.md) と [QUALITY-CHECKS.md](QUALITY-CHECKS.md)。
+- 以前のDriveの `trk-apk-0.1.0-dev-2026-10-29` は初回マージ時点の古い開発ソースで、この変更は入っていない。Lat式モデルも含む。既存配布物は自動更新していない。
 
-## 2. 今回実装したこと
+## 2. 実装と決定事項
 
-- 下部に **ライブラリ／エフェクト／再生／書斎／ゲーム** の5項目。再生中にエフェクトを調整し、プレイヤーに戻る導線を設けた。動画のプレビューもエフェクト画面に移す。再生画面からゲーム準備へ入り、選択曲で譜面を生成する流れは仮置き。
-- 右側のゲーム準備・スペクトラムは通常のスマホ画面から格納。曲・動画・パック等の取込入口は「コンテンツを追加」に畳んだ。操作自体は削除していない。
-- 🎹 シンセは新規・音声設定リセット時にオフ。設定のチェックで使用開始。保存済みの旧設定は尊重する。
-- 設定の各詳細欄は初回閉じ、手動開閉だけ `trk_apk_settings_panels_v1` に端末保存する。検索による開閉は記録しない。全設定リセットで消す。この表示状態は設定バックアップ対象外。
-- 🐔 trk's playlist は初回起動・チュートリアル完了時に自動作成しない。設定でカタログからリストを一つずつ選択して追加する。新しいカタログ項目は選択肢へ現れる。削除したものも個別に再追加でき、既存リストの名前・曲・wish・移動を自動同期で上書きしない。音源はカタログに同梱しない（任意デモを除く）。
-- 上流の既存ゲーム・プレイヤー・書斎・モードは残している。上流のMMDは、内蔵モーション65種をすべて選択可能で、🎤 歌・口パクの6グループを含む。権利・音源は [NOTICE.md](../NOTICE.md) を参照。`BELIEVE.ogg` など外部音源は同梱されない。
+### 画面・操作
 
-## 3. 開発環境・ビルド
+- 下部ナビは **ライブラリ／エフェクト／再生／書斎／ゲーム**。右側のゲーム準備・スペクトラムを通常画面から格納し、取り込み口は「コンテンツを追加」に畳む。再生を維持してエフェクトを操作し、プレイヤーから選曲状態のままゲーム準備へ進む流れは仮置き。
+- シンセは新規・音声リセット時にオフ。設定の詳細欄は初回閉じ、利用者の手動開閉を `trk_apk_settings_panels_v1` に保存する（検索による一時開閉は保存しない）。
+- 🐔trk's playlistは起動時に自動作成せず、設定のカタログからリストを個別に追加する。既存リストの編集は上書きしない。紹介カタログは音源を同梱しない。
+- Androidの戻るは `@capacitor/app` で全画面、確認ダイアログ、書斎、設定、エフェクト、プレイヤー、ゲームの順に対処し、最後に終了確認を出す。未知のモーダルを通り抜けない。Android実機で要確認。
+- 画面の向きは通常は端末設定に従う。右下ボタンで現在の向きを一時固定／解除し、**10秒長押し**で緊急復帰を確認する。固定は保存しない。ボタンはモーダル・書斎中には隠す。ゲーム画面の向きは実機を見て決める。Android側の向き固定も未検証。
 
-Node.js 22以上、npm、JDK 21、Android Studio／Android SDK 36 が必要。Gradle依存物とSDKは別途取得する。
+### 再生・画中絵・操作デバイス
+
+- タイトル右上のアンテナで、裏画面の再生継続を試みる／一時停止する設定を切り替える。ゲームプレイ中は記録保護を優先する。現状はWebViewの再生で、OS・省電力・画面ロック等による中断を防げない。
+- プレイヤー内の「画中絵を常に使用する」は初期オフ。オンでは動画のみを既定とし、音楽も含める設定では曲名とアプリアイコンを表示する。ゲーム中はPiPにしない。PiP非対応・拒否・移行失敗時はアンテナの設定に戻る設計。Androidライフサイクルや各機器での動作は未検証。
+- PiPの選択 `trk_apk_pip_mode_v1` と音楽表示の好み `trk_apk_pip_audio_v1` は端末ローカルに保存され、設定バックアップには含まれず、全設定リセットで削除される。
+- 「無音のまま再生を進める」は謎設定の候補として保留。MIDI／Web Audioも含めた消音と、元のミュート状態の復元を設計・検証するまでは実装しない。アンテナOFFの現行方針は一時停止。
+- Web Media Sessionには再生／一時停止と前後の曲の入口がある。重複するplay/pause命令で逆動作しないよう修正し、Activityの音量キーをメディア音量に関連づけた。**Android通知・ロック画面・イヤホン操作は未検証。** Media3の再生サービスはまだない。
+- Shokz OpenRun Pro 2の音量＋／－、多機能ボタン1回／2回／3回を対応目標として記録。[media3-plan.md](media3-plan.md) に公式情報、Web Audioとの統合課題、安全性、受け入れ条件を記載。AndroidX Media3はMITではなくApache-2.0。
+
+### データ・権利・安全性
+
+- AndroidではSWを新規登録せず、旧同スコープSWとバージョン別シェルキャッシュのみ削除する。共有インボックスや利用者データは消さない。旧Workerが制御中なら一度だけ再読み込みする。Web/PWAのSWは維持。
+- Android自動バックアップは無効、FileProvider外部領域はアプリ固有Picturesに制限。署名鍵の除外を追加。Android共有インテント、ネイティブSAF・MediaStore、永続フォルダ権限は未実装。取込入口は削除しない。
+- Lat式ミクのモデル・テクスチャは現在の作業ツリーとAPK用生成物から外し、[Lat様の配布先](https://bowlroll.net/file/30199)を案内する。ユーザーが既に保存したモデルは自動削除しない。Git履歴・過去のDrive配布物には残る。
+- MMDの内蔵モーションは65種をすべて選択可能、🎤 歌・口パクの6グループを含む。モーション検査はLat式Ver.2.31の名前だけのfixtureを用い、現在の配布モデルとの互換性は保証しない。`BELIEVE.ogg` 等の外部音源は同梱しない。
+- Lat式を外しても `js/characters/miku.js` 等の初音ミク二次創作や東方素材は残る。ストア配布条件・ライセンスの確認が必要。`fx-synth.js`と楽譜の空白だけの差分は上流に戻した。
+
+## 3. 開発・ビルド
+
+Node.js 22以上、npm、JDK 21、Android Studio／Android SDK 36が必要。Gradle依存物とSDKは別途取得する。
 
 ```sh
 npm ci
-# assets/vendor のファイルが欠けている場合だけ、npmレジストリから復元
+# assets/vendor 内の build / dist が欠ける場合に復元
 npm run vendor:update
 npm run check
 npm run cap:sync
@@ -33,29 +51,24 @@ npm run cap:open:android
 cd android && ./gradlew assembleDebug
 ```
 
-`android/` は既にあるため `cap:add:android` は再実行しない。`cap:sync` は `mobile-web/` と `android/app/src/main/assets/public/` を生成しコピーする。これらとビルド出力、`node_modules/`、署名鍵・ローカル音源はGitに入れない。`assets/vendor/` はアプリに必要な固定済み依存物で、内側の `dist/`・`build/` も含めて保持する。`tools/vendor-lock.json` を正とし、更新後は `npm run check:vendor:npm` を実行する。
+`android/` は生成済みのため `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成する。`assets/vendor/` は固定済み依存物で内側の `dist/`・`build/` も必要。更新時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認する。署名鍵・音源・ビルド出力はGitに入れない。
 
-現時点の環境にはJDK／Android SDKがなく、APKは作成していない。上記のAndroidビルド手順は未検証。署名、アプリID、バージョン、権利・プライバシーを確認するまで配布しない。
+## 4. 検証状況と優先作業
 
-## 4. 検証済み／未検証
+- `npm run check` は706件成功（37スイート）。`npm run cap:sync`、`git diff --check` も成功。`npm run check` には `tools/check-security.mjs` などの静的検査も含む。JSの単体・結合テストはjsdomやモックであり、Androidネイティブコードのコンパイル、描画、実音声、Bluetoothを検証しない。
+- JDK／Android SDKがないためAPK作成なし。レビューでは以前の版を390×844の実ブラウザーで確認しているが、この環境ではChromiumのシステムライブラリ不足により今回の修正後のレイアウトは確認できていない。
+- 優先：SDK／JDK環境でクリーンビルドし、Android実機で取り込み・再接続、再生／FX／ゲーム、書斎、戻る、向き固定、PiP、アンテナ、端末ロックと出力切替を確認。特にPiP遷移・停止・外部ピッカー・字幕・画面向きの競合を評価する。
+- Media3の導入・キューと既存FXの両立・権限・通知・Audio Focus・Bluetoothを設計し、Shokz OpenRun Pro 2で実機検証する。サービスやアプリが終了した場合の挙動も決める。
+- アプリID、ゲーム画面の向き、その他素材の配布条件は未決。SAF／MediaStore、遅延タップ補正、APK同梱docs削減、無音継続も今後の課題。
+- 開発用Capacitor CLIの依存 `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。別途更新互換性と実機のセキュリティ・権利・プライバシーを確認する。
 
-- `npm run check`：692テスト成功（37スイート、静的検査含む）。`tools/check-security.mjs`、アクセシビリティ・vendor等も実行。`npm run cap:sync` と `git diff --check` 成功。
-- jsdomで実際のtrkスクリプトを読み込み、5項目、画面切替・再生状態、シンセの初期値、設定開閉、🐔リストの選択／再追加／上限・編集保持を検証した。jsdomは実機や描画・音声の保証ではない。
-- **未確認**：APKのビルド、Android WebView・実機、実音声・動画、表示・タッチ・縦横回転・戻るキー、実ブラウザーのレイアウト。サンドボックスのChromiumは必要なシステムライブラリ不足で動かなかった。
-- WebViewのフォルダ選択・永続権限・IndexedDB容量は未確認。AndroidのSAF／MediaStoreのネイティブ接続、自動スキャン、Media3のバックグラウンド再生サービスは未実装。現状は画面が非表示になると動画を一時停止する経路がある。
-- 開発用 Capacitor CLI の依存 `xcode` → `uuid` に moderate の npm audit 指摘（2026-10-28）。更新の互換性を要確認。別途実機のセキュリティ・権利・プライバシー確認が必要。
-
-## 5. 主なファイルと次の作業
+## 5. 主なファイル
 
 | 場所 | 内容 |
 | --- | --- |
-| `index.html`, `css/apk-mobile.css`, `js/apk-mobile.js` | スマホ画面、5項目ナビ、エフェクト・再生導線 |
+| `index.html`, `css/apk-mobile.css`, `js/apk-mobile.js` | スマホ画面、ナビ、エフェクト・再生導線、緊急復帰操作 |
+| `js/apk-native.js`, `js/apk-background.js`, `android/app/src/main/java/com/trk/agrg/` | Android戻る、SW整理、向き・PiP試作 |
+| `js/fx-dock.js`, `js/media-player-mode.js`, `js/library.js`, `js/media.js` | アンテナ、Web Media Session、キュー、Web再生・解析 |
 | `js/apk-settings-panels.js`, `js/synth-mode.js`, `js/core.js` | 設定開閉とシンセの初期値・保存 |
-| `js/library.js`, `js/catalog.js`, `js/main.js` | 🐔の選択・既存プレイリスト・チュートリアル |
 | `android/`, `capacitor.config.ts`, `tools/prepare-mobile-web.mjs` | AndroidシェルとWeb資産同期 |
-| `tests/apk-*.test.mjs`, `tests/trk-playlists.test.mjs` | APK向けDOM・結合スモークとプレイリスト検査 |
-
-1. JDK／SDKを用意し、クリーン環境で `npm ci` → `npm run check` → `npm run cap:sync` → `./gradlew assembleDebug` を確認する。
-2. Android実機で音楽／動画取込、再接続、再生・エフェクト切替、ゲーム移行、書斎、プレイリスト、回転・戻る操作を確認する。
-3. 必要に応じてSAF・MediaStoreとMedia3を設計する。インストール時の権限だけで任意フォルダへの永続アクセスを得られると仮定しない。
-4. 変更前に `git status --short` を確認し、指定された作業ブランチを使ってPRで反映する。上流デスクトップ版の配布ZIP作成方法は [上流資料 §9](HANDOFF-UPSTREAM-trk214.md) を参照し、このAndroid開発ソースを1.1.4の公式配布物と混同しない。
+| `tests/apk-*.test.mjs`, `tests/trk-playlists.test.mjs` | Android向けDOM・結合テスト、プレイリスト検査 |

@@ -1,3 +1,5 @@
+> **Android版メンテナ向け（2026-10-29）**：取り込み元は `TonbokiriRaikiriMuramasa-Taikoubou/trk` の `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214 / 1.1.4）。Android側で `core.js`・`library.js`・`main.js`・`synth-mode.js`・`media-player-mode.js`・`index.html` を直接調整し、`apk-*.js`／`apk-mobile.css`／`android/` を追加した。`fx-synth.js` と `tools/ost-scores/*.abc` は初回レビュー後に上流とバイト一致へ戻した。今後の取り込みでは元コミット、手動差分、検証結果をここに追記し、上流との小さなプラットフォーム差し込み口を検討する。以下は取り込み時点の上流資料で、Androidの現状は [HANDOFF.md](HANDOFF.md) を優先する。
+
 # trk! 開発引き継ぎ
 
 > **最終更新：2026-10-27（trk214・**1.1.4**＝1.1.3 レビュー反映：🖥 ドラッグ中はポインターを掴んで外へ出てもずらす・ピンチのあと残った1本指でそのまま動かす・配布物のリンク切れ検査。trk212・trk213・**1.1.3**：🖥 全画面の動画をホイール／ドラッグ／ピンチで拡大・縮小（100〜500%・ポインター中心・1回 2/5/10%）、⏱ 曲名タブの「ここをプレビュー開始位置にする」を設定で出す（**初期オフ**）。**1.1.3 は trk213 を配る版**。1.1.0→1.1.1→1.1.2 のレビュー反映もそれぞれのZIPに同梱済み。1.0.9〜1.1.2 の配布ZIPの形と時刻もここに集約）**。現在の仕様・守る条件・未確認事項の要約です。過去の詳細な変更履歴・検証記録は [`HANDOFF-ARCHIVE.md`](HANDOFF-ARCHIVE.md)、利用者向け仕様は [`README.md`](../README.md) と [`guide/`](guide/)、権利表記は [`NOTICE.md`](../NOTICE.md)、品質・安全確認は [`QUALITY-CHECKS.md`](QUALITY-CHECKS.md) と [`SECURITY.md`](SECURITY.md) を参照してください。

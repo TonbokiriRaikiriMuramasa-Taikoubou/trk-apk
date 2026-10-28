@@ -126,3 +126,14 @@ test("actual markup keeps every import action and reconnect outside the collapse
   }
   assert.ok(importPanel.querySelector('[data-i18n="libOpenShareHint"]'));
 });
+
+test("welcome and dynamically added dialogs block the bottom navigation", async () => {
+  const { w, d } = setup(), nav = d.querySelector(".apk-nav");
+  const welcome = d.createElement("div"); welcome.id = "welcomeBox"; welcome.setAttribute("role", "dialog"); welcome.setAttribute("aria-modal", "true");
+  d.querySelector("#selectScreen").append(welcome); await Promise.resolve();
+  assert.equal(nav.hidden, true);
+  welcome.hidden = true; await Promise.resolve(); assert.equal(nav.hidden, false);
+  const overlay = d.createElement("div"); overlay.className = "plOverlay"; d.body.append(overlay); await Promise.resolve();
+  assert.equal(nav.hidden, true); overlay.remove(); await Promise.resolve(); assert.equal(nav.hidden, false);
+  w.close();
+});

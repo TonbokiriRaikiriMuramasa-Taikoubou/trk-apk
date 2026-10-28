@@ -94,17 +94,14 @@ text decoding and its display styles are original trk! code under the GPL.
 
 `first-spark-tutorial.easy.json` / `.normal.json` / `.hard.json` are original chart data written for the same tutorial, not transcriptions of any commercial chart. Notes are placed on the track's own 128 BPM / 4/4 grid (kick on every beat, brighter synth on the off-beats, a break in bars 9-10, one accent in the last bar) from a documented pattern table in `tools/make-first-spark-charts.mjs`. They use the public `shadow-taiko-chart` format, so they can be inspected, exported and re-imported like any other chart. MASTER and RUSH deliberately ship no chart and stay generated from the Seed.
 
-### 3a. Bundled MMD models (`assets/mmd/`)
-A model may be bundled under `assets/mmd/` ONLY when its own readme explicitly
-allows redistribution. Example — Lat-style Miku's readme states that, within the
-rights holder's guidelines (Crypton's PCL), any use including modification and
-redistribution is OK. For every bundled model:
-- the author's **original readme is included in the same folder** and its terms apply;
-- the model, textures and readme are **NOT covered by the GPL** — they are not ours to license;
-- character rights (Hatsune Miku etc.) remain with Crypton Future Media, INC. under
-  the PCL: non-commercial and free of charge only.
-**To make a commercial fork:** delete the `assets/mmd/` folder entirely
-(together with `js/characters/miku.js`, see section 2).
+### 3a. MMD models (bring your own)
+This Android-focused version does not bundle the Lat-style Miku model or its
+textures. The model author Lat provides [Lat-style Miku Ver.2.31](https://bowlroll.net/file/30199);
+users should obtain it themselves and review the model's current ReadMe and the
+Piapro Character License before use. The author's model and textures are not GPL.
+Android WebView folder selection, model rendering and external link handling
+have not yet been tested on a device. Previously saved user models are not
+automatically deleted.
 
 ### 3b. TV/video looks (original effects)
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-/* ==========================================================================
+/* ========================================================================== 
    trk! fx-synth.js — 🎹 safe visual editor for composing trk-fx effect chains
    Loads after fx.js so it can use window.TrkFX and the existing FX JSON editor.
    Drafts live only in memory; apply is temporary, Save uses fx.js's validated
@@ -84,14 +84,14 @@ Object.assign(TEXT.en, {
 });
 Object.assign(TEXT.zh, {
   synthTitle:"🎛 组合效果链",
-  synthHint:"连接不同效果来塑造声音。点击“应用”试听，并保存到“我的预设”或导出JSON。",
+  synthHint:"连接不同效果来塑造声音。点击“应用”试听，并保存到“我的预设”或导出JSON。", 
   synthName:"预设名称", synthNamePlaceholder:"我的声音", synthEffectType:"效果类型",
   synthMaster:"🎚 主控", synthMasterVol:"输出音量", synthMasterHint:"五段EQ与效果器架上的EQ滑块共用。",
   synthLoad:"读取当前音效", synthImport:"⇧ 导入 trk-fx", synthExport:"⇩ 导出JSON",
   synthApply:"▶ 应用到声音", synthSave:"⭐ 保存到我的预设", synthAdd:"＋ 添加效果",
   synthAddHint:"效果按顺序依次处理。最多16个效果。",
   synthNoEffects:"还没有效果，请在上方添加。",
-  synthSaveHint:"试听后再保存。EQ与效果器架共用；输出音量在主控中调整。",
+  synthSaveHint:"试听后再保存。EQ与效果器架共用；输出音量在主控中调整。", 
   synthStep:"第{n}步", synthMoveUp:"上移", synthMoveDown:"下移", synthRemove:"移除", synthRemoveBand:"移除频段",
   synthAddBand:"＋ 添加EQ频段", synthEqBand:"EQ频段 {n}", synthBandLimit:"EQ最多支持10个频段。",
   synthFxEq:"均衡器 (EQ)", synthFxComp:"压缩器", synthFxGain:"增益", synthFxWidth:"立体声宽度",
@@ -124,7 +124,7 @@ Object.assign(TEXT.ko, {
   synthApply:"▶ 오디오에 적용", synthSave:"⭐ 내 프리셋에 저장", synthAdd:"＋ 이펙트 추가",
   synthAddHint:"이펙트는 순서대로 적용됩니다. 체인당 최대 16개입니다.",
   synthNoEffects:"아직 이펙트가 없습니다. 위에서 추가하세요.",
-  synthSaveHint:"적용해 들어본 뒤 저장하세요. EQ는 이펙트 랙과 공유되며 출력 음량은 마스터에서 조정합니다.",
+  synthSaveHint:"적용해 들어본 뒤 저장하세요. EQ는 이펙트 랙과 공유되며 출력 음량은 마스터에서 조정합니다.", 
   synthStep:"{n}단계", synthMoveUp:"위로", synthMoveDown:"아래로", synthRemove:"제거", synthRemoveBand:"밴드 제거",
   synthAddBand:"＋ EQ 밴드 추가", synthEqBand:"EQ 밴드 {n}", synthBandLimit:"EQ 밴드는 최대 10개입니다.",
   synthFxEq:"이퀄라이저 (EQ)", synthFxComp:"컴프레서", synthFxGain:"게인", synthFxWidth:"스테레오 폭",

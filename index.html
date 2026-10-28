@@ -1338,6 +1338,7 @@
               If the screen becomes unusable, add <code>?safe=1</code> or <code>?reset=tv</code> to the URL and reload.
             </div>
             <div class="miniActions" style="margin-top:10px">
+              <p class="hint">Android版：右下の画面向きボタンを10秒長押しするとセーフモードを開けます。</p>
               <button id="emergencySafeBtn" type="button" class="primary slim">🛟 セーフモード (映像OFF)</button>
               <button id="emergencyTvResetBtn" type="button">📺 映像・TVリセット</button>
               <button id="emergencyAudioResetBtn" type="button">🔊 音リセット</button>
@@ -1902,6 +1903,48 @@
   (function(){
     const b = document.getElementById("floatingSafeBtn");
     if (!b) return;
+    // Android uses this button for a temporary orientation lock. The hidden
+    // recovery gesture is kept here, independent of the rest of the app JS.
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) {
+      let locked = false, busy = false, timer = 0, longPressed = false;
+      const labels = {
+        ja:["現在の画面の向きを固定", "画面の向き固定を解除", "画面の向きを変更できません。", "🛟 セーフモードに入りますか？\n映像とTVの設定を安全側に戻します。"],
+        en:["Lock current orientation", "Unlock orientation", "Unable to change orientation.", "🛟 Enter safe mode?\nVideo and TV settings will be reset to safe values."],
+        zh:["锁定当前屏幕方向", "解除屏幕方向锁定", "无法更改屏幕方向。", "🛟 进入安全模式？\n视频和电视设置将恢复为安全值。"],
+        ko:["현재 화면 방향 고정", "화면 방향 고정 해제", "화면 방향을 변경할 수 없습니다.", "🛟 안전 모드로 들어갈까요?\n영상과 TV 설정을 안전한 값으로 되돌립니다."]
+      };
+      const words = () => labels[(document.documentElement.lang || "en").split("-")[0]] || labels.en;
+      const update = () => {
+        b.textContent = locked ? "🔒" : "↻"; b.title = words()[locked ? 1 : 0];
+        b.setAttribute("aria-label", b.title); b.setAttribute("aria-pressed", String(locked));
+      };
+      b.dataset.orientationControl = "true";
+      window._trkUpdateOrientationControl = update;
+      update();
+      b.addEventListener("pointerdown", e => {
+        if (e.button !== undefined && e.button !== 0) return;
+        longPressed = false; clearTimeout(timer);
+        timer = setTimeout(() => {
+          longPressed = true;
+          if (confirm(words()[3])) {
+            try { localStorage.setItem("trk_emergency_safe", "1"); } catch (_) {}
+            const url = new URL(location.href); url.searchParams.set("safe", "1"); location.href = url.toString();
+          }
+        }, 10000);
+      });
+      for (const event of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(event, () => clearTimeout(timer));
+      b.addEventListener("contextmenu", e => e.preventDefault());
+      b.addEventListener("click", async () => {
+        if (longPressed || busy) { longPressed = false; return; }
+        const plugin = window.Capacitor.Plugins && window.Capacitor.Plugins.TrkDevice;
+        if (!plugin || typeof plugin.setOrientationLock !== "function") { alert(words()[2]); return; }
+        busy = true;
+        try { const result = await plugin.setOrientationLock({locked:!locked}); locked = !!result.locked; update(); }
+        catch (_) { alert(words()[2]); }
+        finally { busy = false; }
+      });
+      return;
+    }
     let over = false;
     b.addEventListener("mouseenter", ()=>{ b.style.opacity="1"; over=true; });
     b.addEventListener("mouseleave", ()=>{ if(!over) return; b.style.opacity=".15"; over=false; });
@@ -1993,6 +2036,8 @@
 <script src="js/backup.js"></script>
 <script src="js/share-inbox.js"></script>
 <script src="js/apk-mobile.js"></script>
+<script src="js/apk-native.js"></script>
+<script src="js/apk-background.js"></script>
 <script src="js/apk-settings-panels.js"></script>
 </body>
 </html>

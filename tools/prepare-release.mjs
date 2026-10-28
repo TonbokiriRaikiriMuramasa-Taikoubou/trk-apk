@@ -24,9 +24,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const WRAPPER_INDEX = "index.html";
 export const WRAPPER_README = "README.txt";
 export const APP_DIR = "trk-files";
-/* 配布用の「かんたん起動」README.txt はリポジトリにも置く（release/README.txt）。
+/* 配布用の「かんたん起動」README.txt はリポジトリにも置く（release/README-upstream-web.txt）。
    これがあればDriveを見なくても同じZIPを作り直せる。--readme を省いたときはこれを使う。 */
-export const DEFAULT_README = path.join(ROOT, "release", "README.txt");
+export const DEFAULT_README = path.join(ROOT, "release", "README-upstream-web.txt");
 /* ルートに見えてよいもの（これ以外がルートにあったら失敗＝「index.html と README だけ」を守る） */
 export const WRAPPER_ENTRIES = [WRAPPER_INDEX, WRAPPER_README, APP_DIR];
 /* ルートの入口。アプリ本体は trk-files/ にある（1.0.6 の試作と同じ作り）。
@@ -295,7 +295,7 @@ if (isMain) {
     else console.log(`✅ ${WRAPPER_INDEX} / ${WRAPPER_README} / ${APP_DIR}/ の形です`);
   } else if (!args.app) {
     console.error("使い方: node tools/prepare-release.mjs --app=<アプリ> [--readme=<README.txt>] --version=1.0.9 --out=dist [--zip] [--date=...] [--newer-than=...]");
-    console.error("  --readme を省くと release/README.txt（リポジトリ同梱の配布用README）を使います。");
+    console.error("  --readme を省くと release/README-upstream-web.txt（上流Web版の配布用README）を使います。");
     console.error("  --date は前の版の built_at より新しくしてください（同じ時刻だとブラウザーが旧版を使い続けます）。");
     process.exitCode = 2;
   } else {

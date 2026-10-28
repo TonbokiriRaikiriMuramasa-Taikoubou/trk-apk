@@ -4,3 +4,8 @@ assets/vendor/** whitespace=-space-before-tab
 
 # The Gradle Windows launcher deliberately uses CRLF.
 android/gradlew.bat text eol=crlf whitespace=cr-at-eol
+
+# Preserve upstream files byte-for-byte, including their existing trailing spaces.
+js/fx-synth.js whitespace=-trailing-space
+js/synth-mode.js whitespace=-trailing-space
+tools/ost-scores/*.abc whitespace=-trailing-space

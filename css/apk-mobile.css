@@ -32,7 +32,9 @@
 .apk-shell .screen h2 { font-size:28px; }
 .apk-shell .screen .setTitle { font-size:24px; }
 .apk-shell .bannerTitle { font-size:23px; }
-.apk-shell #floatingSafeBtn { bottom:calc(80px + env(safe-area-inset-bottom)); }
+.apk-shell #floatingSafeBtn { bottom:calc(80px + env(safe-area-inset-bottom)) !important; min-width:44px; min-height:44px; touch-action:manipulation; }
+.apk-shell #floatingSafeBtn[hidden] { display:none !important; }
+.apk-shell #floatingSafeBtn[data-orientation-control] { opacity:.7 !important; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .apk-nav { position:fixed; z-index:1000; bottom:0; left:0; right:0; display:flex; padding:5px max(4px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); background:var(--ui-panel); border-top:1px solid var(--ui-border); box-shadow:0 -6px 24px #0004; }
 .apk-nav[hidden] { display:none; }
 .apk-nav button { flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:5px 2px; border:0; border-radius:12px; background:transparent; color:var(--ui-muted); font-size:20px; }
@@ -84,3 +86,17 @@
 .apk-eq-row input { width:100%; }
 .apk-eq-row output { text-align:right; font-variant-numeric:tabular-nums; }
 #apkEqReset { min-height:44px; font-size:13px; }
+
+/* Practical touch targets in the initial library and tutorial. */
+.apk-shell #quickGuide button, .apk-shell .welcomeActions button,
+.apk-shell #libTabs button, .apk-shell .libTabs button,
+.apk-shell .favChipsRow button, .apk-shell .libTools button { min-height:44px; }
+
+.apk-pip-options { grid-column:1 / -1; padding:12px; border:1px solid var(--ui-border); border-radius:12px; }
+.apk-pip-options .check { min-height:44px; }
+#apkPipView { position:fixed; inset:0; z-index:2147483645; display:flex; align-items:center; justify-content:center; gap:12px; background:#14131b; color:white; padding:12px; }
+#apkPipView[hidden] { display:none; }
+#apkPipView img { width:25%; max-width:96px; height:auto; }
+#apkPipView strong { overflow:hidden; text-overflow:ellipsis; font-size:clamp(12px,5vw,24px); }
+body.apk-in-pip #floatingSafeBtn, body.apk-in-pip .apk-nav { display:none !important; }
+body.apk-pip-video #video { position:fixed !important; inset:0 !important; width:100vw !important; height:100vh !important; opacity:1 !important; object-fit:contain; z-index:2147483646 !important; pointer-events:none; background:#000; }
