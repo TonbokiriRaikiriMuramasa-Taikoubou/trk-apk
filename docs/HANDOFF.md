@@ -24,6 +24,7 @@
 
 - タイトル右上のアンテナOFFは裏画面で一時停止、ONは継続を試みる。WebView再生にはOS・省電力・ロック等による中断の可能性があり、継続を保証できない。ゲーム中は記録保護を優先。
 - プレイヤー内の自動画中絵は初期OFF。ON時は動画のみが既定で、音楽も含める選択肢あり。ゲーム中は対象外。動画の枠比率は動画寸法をAndroidの範囲に丸め、音楽・寸法不明は16:9。専用のPiP再生／停止ボタンは未実装。PiP移行や動画表示は実機未検証。
+- PiP移行の1.5秒フォールバックは、前景復帰・PiP開始・次の移行で古いタイマーを無効化する。未稼働時の重複したPiP終了通知はアンテナONの背景再生を停止しない。PiPが稼働中から終了し、その時点で非表示なら停止する。OSの通知順序は実機未確認。
 - PiP設定 `trk_apk_pip_mode_v1`／`trk_apk_pip_audio_v1` は端末内に保存し、設定バックアップには含まれず全設定リセットで削除。
 - Media3、ネイティブMediaSessionService、Audio Focus統合は**未実装**。Web Media Sessionのplay/pauseを冪等化し、Activity表示中の音量キーを `STREAM_MUSIC` に関連付けたが、通知・ロック画面・Bluetoothは未検証。Shokz OpenRun Pro 2の音量＋／－と多機能ボタン1／2／3回は対応目標。
 - 無音のまま再生を進める「謎設定」は保留。MIDI／Web Audioを含む消音と元の状態の復帰を設計・検証してから判断する。
@@ -53,9 +54,10 @@ cd android && ./gradlew assembleDebug
 
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
-- `npm run check`：**711件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- `npm run check`：**715件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
 - [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40751690423)：`9c53d5c` でJavaを含め成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
+- Android instrumentationに、実際のPiP開始とWebViewへの通知を検証するテストを追加。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。該当コミットのActions実行結果を確認すること。このテストも動画・音声再生や物理端末を検証しない。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 

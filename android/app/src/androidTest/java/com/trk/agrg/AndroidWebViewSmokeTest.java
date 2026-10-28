@@ -4,13 +4,16 @@ package com.trk.agrg;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
+import android.app.PictureInPictureParams;
 import android.content.pm.ActivityInfo;
 import android.os.SystemClock;
 import android.util.Rational;
 import android.view.KeyEvent;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +59,23 @@ public class AndroidWebViewSmokeTest {
         assertEquals(new Rational(239, 100), MainActivity.pipRatio(239, 100));
         assertEquals(new Rational(16, 9), MainActivity.pipRatio(0, 0));
         assertEquals(new Rational(16, 9), MainActivity.pipRatio(-1, 200));
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 26)
+    public void nativePictureInPictureEntryNotifiesWebView() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkApkPip");
+            AtomicReference<Boolean> supported = new AtomicReference<>(false);
+            scenario.onActivity(activity -> supported.set(activity.canUsePip()));
+            assumeTrue("PiP is unavailable or disabled on this test device", supported.get());
+            AtomicReference<Boolean> entered = new AtomicReference<>(false);
+            scenario.onActivity(activity -> entered.set(activity.enterPictureInPictureMode(
+                new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build())));
+            assertTrue("Android rejected PiP entry", entered.get());
+            eventually(scenario, "document.body.classList.contains('apk-in-pip')");
+            scenario.onActivity(activity -> assertTrue("Activity must actually be in PiP", activity.isInPictureInPictureMode()));
+        }
     }
 
     @Test

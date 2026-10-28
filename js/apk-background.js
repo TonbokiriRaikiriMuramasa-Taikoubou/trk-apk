@@ -72,20 +72,41 @@
     sync();
     return true;
   }
+  // A delayed fallback belongs to exactly one hide/PiP transition. Invalidate
+  // it on foreground, PiP entry, or a newer attempt, even if its callback was
+  // already queued before clearTimeout ran.
+  let transitionTimer = null, transitionVersion = 0;
+  function cancelTransition() {
+    transitionVersion++;
+    if (transitionTimer !== null) clearTimeout(transitionTimer);
+    transitionTimer = null;
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) cancelTransition(); }, true);
   window.addEventListener("trkApkPipChanged", e => {
+    const wasActive = active;
     active = e.detail === true;
+    if (active) cancelTransition();
     const video = active && core.video && core.video.videoWidth > 0;
     document.body.classList.toggle("apk-in-pip", active);
     document.body.classList.toggle("apk-pip-video", video);
     if (pipView) pipView.hidden = !active || video;
     render();
-    // Dismissing a PiP window while still hidden should stop playback.
-    if (!active && document.hidden && core.video && !core.video.paused) core.video.pause();
+    // Only a real active -> inactive PiP transition is a dismissal. An extra
+    // inactive callback must not stop antenna-enabled background playback.
+    if (wasActive && !active && document.hidden && core.video && !core.video.paused) core.video.pause();
     if (!active) sync();
   });
   window.TrkApkPip = {
     shouldKeepForTransition:() => (active || eligible) && wantsPip(),
-    checkTransition:() => setTimeout(() => { if (document.hidden && !active && !core.settings.fxAntenna && core.video && !core.video.paused) core.video.pause(); }, 1500)
+    checkTransition:() => {
+      cancelTransition();
+      const version = transitionVersion;
+      transitionTimer = setTimeout(() => {
+        if (version !== transitionVersion) return;
+        transitionTimer = null;
+        if (document.hidden && !active && !core.settings.fxAntenna && core.video && !core.video.paused) core.video.pause();
+      }, 1500);
+    }
   };
   function setup() {
     if (init()) return;

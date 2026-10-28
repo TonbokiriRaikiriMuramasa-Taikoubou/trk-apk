@@ -25,5 +25,38 @@ for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml'
             msg = msg.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
             print('::error::' + msg[:900])
 PY
+else
+  # A green Gradle exit is not enough if no instrumentation tests were run.
+  python3 - <<'PY'
+import glob, sys, xml.etree.ElementTree as ET
+expected = {'freshStartupBackAndNativeOrientationBridge',
+            'pictureInPictureRatioUsesVideoAndAndroidLimits',
+            'nativePictureInPictureEntryNotifiesWebView'}
+found = {}
+for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml', recursive=True):
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError:
+        continue
+    for case in root.iter('testcase'):
+        if case.get('classname') == 'com.trk.agrg.AndroidWebViewSmokeTest' and case.get('name') in expected:
+            found[case.get('name')] = case
+missing = expected - found.keys()
+if missing:
+    print('::error::Expected Android smoke test results are missing: ' + ', '.join(sorted(missing)))
+    sys.exit(1)
+for name, case in found.items():
+    if case.find('failure') is not None or case.find('error') is not None:
+        print('::error::Smoke test failed: ' + name)
+        sys.exit(1)
+    if case.find('skipped') is not None:
+        if name != 'nativePictureInPictureEntryNotifiesWebView':
+            print('::error::Required smoke test was skipped: ' + name)
+            sys.exit(1)
+        print('::warning::PiP entry test skipped: PiP unsupported or disabled')
+    else:
+        print('::notice::Smoke test passed: ' + name)
+PY
+  status=$?
 fi
 exit "$status"
