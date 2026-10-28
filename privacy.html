@@ -91,7 +91,7 @@
 
     <section id="apk">
       <h2>6. APK版・アプリ版</h2>
-      <p>Android版は開発中で、APKビルド・実機検証は未実施です。OSの共有メニューからの受信、SAFの永続フォルダアクセス、バックグラウンド再生サービスは未実装です。Androidの自動バックアップは無効に設定し、Android 12以降のクラウドバックアップと端末間転送からアプリデータを除外するルールも設けていますが、OS・機種による動作は実機での確認が必要です。機種変更時はアプリ内データが自動で引き継がれない前提で、必要なら事前にバックアップを書き出してください。ユーザー自身が書き出したファイルは保存先の設定に従います。</p>
+      <p>Android版は開発中で、debug APKのビルドは成功していますが、実機検証は未実施です。OSの共有メニューからの受信、SAFの永続フォルダアクセス、バックグラウンド再生サービスは未実装です。Androidの自動バックアップは無効に設定し、Android 12以降のクラウドバックアップと端末間転送からアプリデータを除外するルールも設けていますが、OS・機種による動作は実機での確認が必要です。機種変更時はアプリ内データが自動で引き継がれない前提で、必要なら事前にバックアップを書き出してください。ユーザー自身が書き出したファイルは保存先の設定に従います。</p>
       <p>将来、Androidの音楽ライブラリへ直接アクセスする機能を追加する場合は、必要な権限、読み取る情報、端末内だけで扱う範囲をこのページとアプリのストア説明に追記します。現在のAPK準備では、Web版と同じくユーザーが選択したファイルを端末内で扱うことを基本とします。</p>
     </section>
 
@@ -109,7 +109,7 @@
     <p>When you import Study Room books or custom packs, or use the storage setting, trk! may request persistent browser storage with <code>navigator.storage.persist()</code>. The browser decides whether to grant it; this is not a guarantee against data loss or deliberate deletion. A full backup is built locally and downloaded as a ZIP. It may contain personal data and add-on code; media files are optional. Restored add-ons start disabled.</p>
     <p>An installed PWA can receive files through the OS share sheet. The Service Worker temporarily keeps incoming files in Cache Storage and asks before importing, showing names and a count. A website can also submit to the share-target endpoint, and the browser cannot distinguish that from OS sharing; cancel unexpected requests. “Open with this app” is an explicit OS action and does not show another prompt. Shared URLs and text are ignored; files are handled locally.</p>
     <p>The app may request file or folder access when you choose music. VRM/MMD features load bundled three.js-related libraries from the app's same origin. GitHub Pages access logs and external destinations such as GitHub Issues and X are governed by their respective policies.</p>
-    <p>The Android build is under development and has not been built or tested on a device. OS share-target import and native persistent folder access are not implemented. Android automatic backup is disabled in the manifest, and Android 12+ rules exclude app data from cloud backup and device-to-device transfer, pending device verification. Do not rely on app data migrating automatically; export a backup if needed before changing devices. User-exported backups are managed by the chosen destination.</p>
+    <p>The Android app is under development. A debug APK has been built, but has not been tested on a device. OS share-target import and native persistent folder access are not implemented. Android automatic backup is disabled in the manifest, and Android 12+ rules exclude app data from cloud backup and device-to-device transfer, pending device verification. Do not rely on app data migrating automatically; export a backup if needed before changing devices. User-exported backups are managed by the chosen destination.</p>
     <p>See the Japanese sections above for the full current policy. Last updated: October 29, 2026.</p>
   </article>
 </main>

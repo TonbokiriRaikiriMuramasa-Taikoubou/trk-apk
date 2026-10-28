@@ -1,6 +1,6 @@
 # trk! Android版 開発引き継ぎ
 
-最終更新：2026-10-29。これは **開発途中のソース**です。APKは未作成で、Androidネイティブコードのビルド・実機検証も未実施です。画中絵や再生継続は試作であり、完成・配布可能とは扱いません。
+最終更新：2026-10-29。これは **開発途中のソース**です。GitHub Actionsでdebug APKとAndroidネイティブコードのビルドは成功しましたが、Android実機検証は未実施です。画中絵や再生継続は試作であり、正式配布可能とは扱いません。
 
 ## 1. 取り込み元と資料
 
@@ -56,7 +56,7 @@ cd android && ./gradlew assembleDebug
 ## 4. 検証状況と優先作業
 
 - `npm run check` は709件成功（37スイート）。`npm run cap:sync`、`git diff --check` も成功。`npm run check` には `tools/check-security.mjs` などの静的検査も含む。JSの単体・結合テストはjsdomやモックであり、Androidネイティブコードのコンパイル、描画、実音声、Bluetoothを検証しない。
-- JDK／Android SDKがないためAPK作成なし。GitHub Actions向けのdebugビルド手順を追加したが、この版のCI実行・Javaコンパイルは未確認。debug APKはGradleのdebug鍵で署名され、一般配布用ではない。レビューでは以前の版を390×844の実ブラウザーで確認しているが、この環境ではChromiumのシステムライブラリ不足により今回の修正後のレイアウトは確認できていない。
+- 作業環境にはJDK／Android SDKがないが、GitHub Actionsの [初回成功ビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40746889673)（コミット `aa02acc`）で `npm ci`、`npm run check`、`cap:sync`、Javaを含む `assembleDebug` が成功し、debug APKが7日間の成果物として保存された。debug APKはGradleのdebug鍵で署名され、一般配布用ではない。**実機動作は未確認。** レビューでは以前の版を390×844の実ブラウザーで確認しているが、この環境ではChromiumのシステムライブラリ不足により今回の修正後のレイアウトは確認できていない。
 - 実機の手順と記録欄は [ANDROID-DEVICE-CHECKS.md](ANDROID-DEVICE-CHECKS.md)。段階的な開発・採らなかった案は [decisions/0001-android-milestones.md](decisions/0001-android-milestones.md)。
 - 優先：SDK／JDK環境でクリーンビルドし、Android実機で取り込み・再接続、再生／FX／ゲーム、書斎、戻る、向き固定、PiP、アンテナ、端末ロックと出力切替を確認。特にPiP遷移・停止・外部ピッカー・字幕・画面向きの競合を評価する。
 - Media3の導入・キューと既存FXの両立・権限・通知・Audio Focus・Bluetoothを設計し、Shokz OpenRun Pro 2で実機検証する。サービスやアプリが終了した場合の挙動も決める。
