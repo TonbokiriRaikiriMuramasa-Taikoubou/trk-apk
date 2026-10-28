@@ -174,7 +174,7 @@
     const blockingModal = visibleModal();
     nav.hidden = core.phase !== "title" || !select || select.hidden || document.body.classList.contains("study-room-open") || blockingModal;
     const floatingButton = document.getElementById("floatingSafeBtn");
-    if (floatingButton) floatingButton.hidden = blockingModal;
+    if (floatingButton) floatingButton.hidden = core.phase !== "title" || blockingModal;
     const gameButton = document.getElementById("apkMediaGame"); if (gameButton) gameButton.textContent = text.game;
     const summary = document.getElementById("apkImportSummary"); if (summary) summary.textContent = text.import;
     syncEffects();
@@ -203,9 +203,11 @@
   for (const event of ["language", "screen", "phase", "studyOpen", "studyClose"]) core.on(event, sync);
   for (const event of ["fxRack", "tvChange", "songSelected", "mediaReady", "songTags", "skin", "lite"]) core.on(event, syncEffects);
   if (core.video) for (const event of ["play", "pause", "ended"]) core.video.addEventListener(event, syncEffects);
-  new MutationObserver(sync).observe(document.body, { attributes:true, attributeFilter:["class"] });
-  // Modal overlays can be added dynamically; ignore unrelated subtree mutations.
+  new MutationObserver(() => { if (core.phase === "title") sync(); }).observe(document.body, { attributes:true, attributeFilter:["class"] });
+  // Phase events resync when returning to the title. During play, avoid
+  // scanning unrelated mutation subtrees or rebuilding UI controls.
   new MutationObserver(records => {
+    if (core.phase !== "title") return;
     const modal = node => node.nodeType === 1 && (node.matches('.plOverlay,[role="dialog"][aria-modal="true"],.instOverlay') || node.querySelector('.plOverlay,[role="dialog"][aria-modal="true"],.instOverlay'));
     if (records.some(r => r.type === "attributes" ? modal(r.target) : [...r.addedNodes, ...r.removedNodes].some(modal))) sync();
   }).observe(document.body, { subtree:true, childList:true, attributes:true, attributeFilter:["hidden"] });

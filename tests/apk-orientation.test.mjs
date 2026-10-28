@@ -20,6 +20,12 @@ test("Android orientation toggle and cancelled ten-second recovery are separate"
   b.click(); await tick(); assert.equal(b.getAttribute("aria-pressed"),"false");
   b.dispatchEvent(new w.Event("pointerdown")); assert.ok(timer); timer(); assert.equal(confirmCalls,1);
   b.click(); await tick(); assert.deepEqual(calls,[true,false]);
-  b.dispatchEvent(new w.Event("pointerdown")); b.dispatchEvent(new w.Event("pointercancel")); assert.equal(timer,null);
+  for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
+    b.dispatchEvent(new w.Event("pointerdown")); b.dispatchEvent(new w.Event(event)); assert.equal(timer,null, event);
+  }
+  const context = new w.Event("contextmenu", { cancelable:true });
+  b.dispatchEvent(context); assert.equal(context.defaultPrevented, true);
+  const css = fs.readFileSync(new URL("../css/apk-mobile.css", import.meta.url), "utf8");
+  assert.match(css, /#floatingSafeBtn\[data-orientation-control\]\s*\{[^}]*touch-action\s*:\s*none/);
   dom.window.close();
 });

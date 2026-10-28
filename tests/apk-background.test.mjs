@@ -7,18 +7,19 @@ const script = fs.readFileSync(new URL("../js/apk-background.js", import.meta.ur
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function setup(saved) {
   const dom = new JSDOM('<!doctype html><body><div id="mediaPlayerMode"><div class="mediaOptions"></div></div><video id="video"></video></body>', {url:"https://localhost/", runScripts:"outside-only", pretendToBeVisual:true});
-  const w = dom.window, d = w.document, calls = [], hooks = {}, video = d.getElementById("video");
-  let playing = true, width = 640, open = true;
+  const w = dom.window, d = w.document, calls = [], payloads = [], hooks = {}, video = d.getElementById("video");
+  let playing = true, width = 640, height = 360, open = true;
   Object.defineProperty(video, "paused", {get:() => !playing});
   Object.defineProperty(video, "ended", {get:() => false});
   Object.defineProperty(video, "videoWidth", {get:() => width});
+  Object.defineProperty(video, "videoHeight", {get:() => height});
   video.pause = () => { playing = false; calls.push("pause"); };
   const core = {phase:"title",settings:{language:"ja",fxAntenna:false}, video, videoReady:true, currentSong:{title:"Song"}, on:(n,fn) => {hooks[n] = fn;}};
   w.Trk = {core}; w.TrkMediaPlayer = {isOpen:() => open};
-  w.Capacitor = {isNativePlatform:() => true, Plugins:{TrkDevice:{setPipEligible:async ({enabled}) => {calls.push(enabled); return {available:true, eligible:enabled};}}}};
+  w.Capacitor = {isNativePlatform:() => true, Plugins:{TrkDevice:{setPipEligible:async payload => {const {enabled} = payload; calls.push(enabled); payloads.push(payload); return {available:true, eligible:enabled};}}}};
   if (saved) for (const [key,value] of Object.entries(saved)) w.localStorage.setItem(key,value);
   w.eval(script); d.dispatchEvent(new w.Event("DOMContentLoaded"));
-  return {w,d,video,core,calls,hooks, setWidth:n=>{width=n;video.dispatchEvent(new w.Event("loadedmetadata"));}, setOpen:v=>{open=v; d.getElementById("mediaPlayerMode").hidden = !v;}};
+  return {w,d,video,core,calls,payloads,hooks, setWidth:n=>{width=n;video.dispatchEvent(new w.Event("loadedmetadata"));}, setSize:(w0,h0,event="loadedmetadata")=>{width=w0;height=h0;video.dispatchEvent(new w.Event(event));}, setOpen:v=>{open=v; d.getElementById("mediaPlayerMode").hidden = !v;}};
 }
 test("PiP defaults off, supports video and optional audio, and remembers both choices", async () => {
   const x=setup(); await tick();
@@ -35,6 +36,32 @@ test("PiP defaults off, supports video and optional audio, and remembers both ch
   x.setOpen(false); await tick(); assert.equal(x.calls.at(-1),true, "player can close while playback continues");
   x.core.phase = "playing"; x.hooks.phase(); await tick(); assert.equal(x.calls.at(-1),false, "gameplay never enters media PiP"); x.w.close();
 });
+test("PiP sends the current video dimensions, including resize and audio fallback", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"all"}); await tick();
+  x.setSize(1080,1920); await tick();
+  assert.deepEqual({...x.payloads.at(-1)}, {enabled:true,videoWidth:1080,videoHeight:1920});
+  x.setSize(1920,1080,"resize"); await tick();
+  assert.deepEqual({...x.payloads.at(-1)}, {enabled:true,videoWidth:1920,videoHeight:1080});
+  x.setSize(0,0); await tick();
+  assert.deepEqual({...x.payloads.at(-1)}, {enabled:true,videoWidth:0,videoHeight:0});
+  x.w.close();
+});
+
+test("queued PiP updates retain their dimensions when native calls are slow", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"all"}); await tick();
+  const received=[]; let release;
+  x.w.Capacitor.Plugins.TrkDevice.setPipEligible = payload => {
+    received.push({...payload});
+    if (received.length === 1) return new Promise(resolve => {release=() => resolve({available:true,eligible:true});});
+    return Promise.resolve({available:true,eligible:true});
+  };
+  x.setSize(1080,1920); await tick();
+  x.setSize(1920,1080); await tick(); assert.equal(received.length,1);
+  release(); await tick();
+  assert.deepEqual(received.map(p => [p.videoWidth,p.videoHeight]), [[1080,1920],[1920,1080]]);
+  x.w.close();
+});
+
 test("PiP shows actual video instead of the audio card and does not run on the web", async () => {
   const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
   x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));

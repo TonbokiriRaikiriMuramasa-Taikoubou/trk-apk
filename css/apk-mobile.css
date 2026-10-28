@@ -34,7 +34,9 @@
 .apk-shell .bannerTitle { font-size:23px; }
 .apk-shell #floatingSafeBtn { bottom:calc(80px + env(safe-area-inset-bottom)) !important; min-width:44px; min-height:44px; touch-action:manipulation; }
 .apk-shell #floatingSafeBtn[hidden] { display:none !important; }
-.apk-shell #floatingSafeBtn[data-orientation-control] { opacity:.7 !important; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+/* Keep WebView panning/zoom gestures from cancelling the recovery hold.
+   OS interruptions can still cancel it; verify the ten-second hold on devices. */
+.apk-shell #floatingSafeBtn[data-orientation-control] { opacity:.7 !important; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .apk-nav { position:fixed; z-index:1000; bottom:0; left:0; right:0; display:flex; padding:5px max(4px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); background:var(--ui-panel); border-top:1px solid var(--ui-border); box-shadow:0 -6px 24px #0004; }
 .apk-nav[hidden] { display:none; }
 .apk-nav button { flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:5px 2px; border:0; border-radius:12px; background:transparent; color:var(--ui-muted); font-size:20px; }

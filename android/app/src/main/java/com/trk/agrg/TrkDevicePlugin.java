@@ -29,10 +29,12 @@ public class TrkDevicePlugin extends Plugin {
     @PluginMethod
     public void setPipEligible(PluginCall call) {
         final boolean enabled = call.getBoolean("enabled", false);
+        final int videoWidth = call.getInt("videoWidth", 0);
+        final int videoHeight = call.getInt("videoHeight", 0);
         getActivity().runOnUiThread(() -> {
             MainActivity activity = (MainActivity) getActivity();
             try {
-                activity.configurePip(enabled);
+                activity.configurePip(enabled, videoWidth, videoHeight);
                 JSObject result = new JSObject();
                 result.put("available", activity.canUsePip());
                 result.put("eligible", activity.isPipEligible());
