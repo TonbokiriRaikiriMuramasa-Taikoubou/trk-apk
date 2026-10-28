@@ -578,7 +578,7 @@ seekBar.addEventListener("input", () => {
 
 /* ---------- 動画の再生合図（終端・pause は game.js が共通処理） ---------- */
 core.video.addEventListener("play", () => { if (core.phase === "paused") { core.showScreen(null); core.setPhase("playing"); poke(); } });
-document.addEventListener("visibilitychange", () => { if (document.hidden && core.phase === "playing") window.Trk.play.pauseGame(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && core.phase === "playing" && !core.keepInBackground?.()) window.Trk.play.pauseGame(); });
 
 /* ---------- ドラッグ＆ドロップ（.stpack は custom.js、.vrm/.vrma は vrm.js が先に受け取ります） ---------- */
 addEventListener("dragover", e => e.preventDefault());

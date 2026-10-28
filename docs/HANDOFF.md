@@ -22,6 +22,7 @@
 
 ### 再生・PiP
 
+- Media3導入前レビューの対応は [レビュー対応記録](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md) を参照。非表示イベントの伝播を維持して押下操作を解除し、逆再生のMedia Session状態を同期した。renderer終了復旧とイヤホン切断時の保護は未実装で、現状の安全な復旧・スピーカー再生防止は保証できない。
 - タイトル右上のアンテナOFFは裏画面で一時停止、ONは継続を試みる。WebView再生にはOS・省電力・ロック等による中断の可能性があり、継続を保証できない。ゲーム中は記録保護を優先。
 - プレイヤー内の自動画中絵は初期OFF。ON時は動画のみが既定で、音楽も含める選択肢あり。ゲーム中は対象外。動画の枠比率は動画寸法をAndroidの範囲に丸め、音楽・寸法不明は16:9。専用のPiP再生／停止ボタンは未実装。PiP移行や動画表示は実機未検証。
 - PiP移行の1.5秒フォールバックは、前景復帰・PiP開始・次の移行で古いタイマーを無効化する。未稼働時の重複したPiP終了通知はアンテナONの背景再生を停止しない。PiPが稼働中から終了し、その時点で非表示なら停止する。OSの通知順序は実機未確認。
@@ -56,7 +57,7 @@ cd android && ./gradlew assembleDebug
 
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
-- `npm run check`：**736件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- `npm run check`：**742件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
 - [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40766988695)：Web Media Session・背景ポリシーとPiP終了時の逆再生停止を含む `fa87afb` で成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
 - [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
@@ -65,7 +66,7 @@ cd android && ./gradlew assembleDebug
 
 ## 4. 次の作業と未決事項
 
-Media3の実装前に[レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)を使い、現行の背景・PiP・逆再生とWeb Media Session、橋渡し案の安全性を確認する。レビュー結果を精査し、実装修正・実機確認・今後の設計を切り分ける。次のマイルストーンは以下のとおり。
+[レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)への回答を精査し、実装修正・実機確認・保留項目を[対応記録](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md)に切り分けた。renderer終了復旧とイヤホン切断保護を含む未完了項目を引き続き優先する。次のマイルストーンは以下のとおり。
 
 1. **M1 実機スモーク（優先）**：まずアンテナON／OFFとPiPの組合せ、ホーム移動・素早い復帰と再移動、PiPからの復帰／終了を[チェック表](ANDROID-DEVICE-CHECKS.md)に沿って確認。取り込み・再接続、再生／FX、5ゲームモード、書斎、戻る、向き・緊急復帰、ロックと音声出力も順次記録する。M1は未完了。
 2. **M2 安定化**：実機がない間も再現可能な回帰テストやエミュレーター検査を追加し、上記CI失敗の再発を観察する。実機で見つかった不具合・遅延やタップ校正は実測して対応。未知のモーダルで任意のボタンを押すBack処理は、削除や承認の誤発火を防ぐため保留。

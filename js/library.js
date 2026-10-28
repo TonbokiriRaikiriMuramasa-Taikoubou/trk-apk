@@ -4222,7 +4222,7 @@ on("beforePlay", () => { previewPending = false; stopPreview(); startBarClose();
 on("beforeLoad", stopPreview);
 on("phase", p => { if (p !== "title") { previewPending = false; cancelAnimationFrame(fadeRaf); } });
 on("screen", id => { if (id === "selectScreen" && core.phase === "title" && core.videoReady) setTimeout(startPreview, 50); if (id !== "selectScreen") startBarClose(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden && core.phase === "title") stopPreview(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && core.phase === "title" && !core.keepInBackground?.()) stopPreview(); });
 core.$("previewEnabled").addEventListener("change", e => {
   core.settings.previewEnabled = e.target.checked; core.saveUserPrefs();
   if (core.settings.previewEnabled) startPreview(); else stopPreview();

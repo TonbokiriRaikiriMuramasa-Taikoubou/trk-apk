@@ -1016,8 +1016,11 @@ function menuVideoWanted() {
   return core.settings.tvMenuVideo === true && core.settings.previewEnabled !== true &&
     core.phase === "title" && screenName() === "select" && !document.hidden && core.videoReady && !!core.video.src;
 }
-function menuVideoTick() {
+function menuVideoTick(event) {
   if (!menuVideoWanted()) {
+    // Previously visibility propagation was stopped while background audio was
+    // allowed. Keep this TV-owned playback/mute unchanged in that case.
+    if (event?.type === "visibilitychange" && document.hidden && core.keepInBackground?.()) return;
     if (menuPlayingByUs) { try { core.video.pause(); } catch (_) {} menuPlayingByUs = false; }
     if (menuMutedByUs) { core.video.muted = false; menuMutedByUs = false; }
     return;
@@ -1452,19 +1455,20 @@ addEventListener("DOMContentLoaded", () => {
       core.video.play().then(() => { pvPlayedByUs = true; }).catch(() => {});
     }
   }
-  function pvRelease() {
+  function pvRelease(event) {
+    if (event?.type === "visibilitychange" && document.hidden && core.keepInBackground?.()) return;
     if (core.settings.tvMenuVideo === true) return;   // メニュー再生が続くので触らない
     if (pvPlayedByUs) { try { core.video.pause(); } catch (_) {} pvPlayedByUs = false; }
     if (pvMutedByUs) { core.video.muted = false; pvMutedByUs = false; }
   }
-  function previewTick() {
+  function previewTick(event) {
     pvChipText();
     if (previewOn()) {
       if (!pvRaf) pvRaf = requestAnimationFrame(pvFrame);
       pvKeepPlaying();
     } else {
       if (pvRaf) { cancelAnimationFrame(pvRaf); pvRaf = 0; }
-      pvRelease();
+      pvRelease(event);
     }
   }
   function showTab(which) {
