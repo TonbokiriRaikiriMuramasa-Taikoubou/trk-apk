@@ -34,7 +34,7 @@ function countTick(k) {
   g.gain.setValueAtTime(.0001, t);
   g.gain.exponentialRampToValueAtTime(Math.max(.002, core.settings.seVolume * .5), t + .005);
   g.gain.exponentialRampToValueAtTime(.0001, t + (go ? .25 : .09));
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .3);
+  o.connect(g).connect(ac.destination); window.Trk.media.trackOneShot(g, [o]); o.start(t); o.stop(t + .3);
 }
 function beginLeadIn(resume) {
   const iv = countIv(), p = performance.now();

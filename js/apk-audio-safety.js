@@ -15,7 +15,8 @@
     blocked:() => blocked,
     version:() => generation,
     resume:() => {
-      blocked = false;
+      const wasBlocked = blocked; blocked = false;
+      if (wasBlocked) core.emit("audioOutputResumed");
       if (recoveryPending && typeof device.acknowledgeRendererRecovery === "function") {
         recoveryPending = false;
         try { Promise.resolve(device.acknowledgeRendererRecovery()).catch(error => console.warn("Unable to save recovery acknowledgement", error)); }

@@ -40,6 +40,12 @@ test('renderer recovery starts blocked before automatic playback and needs expli
   x.listeners.click({isTrusted:false,target:{closest:()=>true}}); assert.equal(x.core.audioSafety.blocked(),true);
   x.core.audioSafety.resume(); assert.equal(x.core.audioSafety.blocked(),false); assert.deepEqual(x.calls,['ack']);
 });
+test('resume signals output recovery once per interruption and only after clearing the latch',()=>{
+  const x=setup(); let resumed=0; x.core.on('audioOutputResumed',()=>{assert.equal(x.core.audioSafety.blocked(),false); resumed++;});
+  x.core.audioSafety.resume(); assert.equal(resumed,0);
+  x.listeners.audioBecomingNoisy(); x.listeners.audioBecomingNoisy(); x.core.audioSafety.resume(); x.core.audioSafety.resume(); assert.equal(resumed,1);
+  const y=setup(true,true); let recovery=0; y.core.on('audioOutputResumed',()=>recovery++); y.core.audioSafety.resume(); assert.equal(recovery,1);
+});
 test('web does not install the Android output policy',()=>{
   const x=setup(false); assert.equal(x.core.audioSafety,undefined); assert.equal(x.listeners.audioBecomingNoisy,undefined);
 });

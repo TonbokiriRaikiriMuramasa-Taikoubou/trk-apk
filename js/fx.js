@@ -378,7 +378,7 @@ function matches(p, q) {
 
 /* ============ ⑤ 音の部品 ============ */
 const G = { ac:null, src:null, ok:true, made:[], ticks:[], comps:0, eq:[], game:null, vol:null, norm:null, lim:null, out:null, noise:{}, ir:new Map(), extra:new Map(), extraMix:new Map(),
-  spectral:0, wk:null, wkLoad:null, denoiseNodes:new Set(), denoisePow:null, denoiseLearned:false, learnNode:null, rackNodes:[] };   /* 🎚 追加分・🔊 norm（trk168） */
+  guard:null, guardConnected:false, spectral:0, wk:null, wkLoad:null, denoiseNodes:new Set(), denoisePow:null, denoiseLearned:false, learnNode:null, rackNodes:[] };   /* 🎚 追加分・🔊 norm（trk168） */
 let cur = null;                                       // 作り直すときに消すノードの一覧（rebuild 中だけ）
 let bypass = false;                                   // 👂 元の音と比べている間だけ true
 let lastNormPlan = { lin:1, db:0, src:"" };           // 🔊 いまの平準化の補正（表示にも使う）
@@ -698,12 +698,9 @@ function rebuildExtraMidiMix() {
 }
 
 /* ============ ⑦ 音の通り道 ============ */
-function ensureGraph() {
-  if (G.src) return true;
-  if (!G.ok) return false;
-  const ac = getAC(); if (!ac) { G.ok = false; return false; }
-  try { G.src = ac.createMediaElementSource(video); } catch (e) { console.error(e); G.ok = false; return false; }
-  G.ac = ac; cur = null; ensureWorklet();   /* 🎚 高精度エフェクトの本体も先に読み始める */
+// Recreate the stateful post-effects nodes after an output interruption. The
+// persistent G.out and analyser taps remain in place; settings are reapplied.
+function buildOutputPath(ac) {
   /* かんたんEQ */
   G.eq = EQ_BANDS.map(([t, f]) => biq(ac, t, f, .9));
   for (let i = 1; i < G.eq.length; i++) G.eq[i - 1].connect(G.eq[i]);
@@ -717,7 +714,16 @@ function ensureGraph() {
   if (gm.pan) { gm.amp.connect(gm.pan); gm.pan.connect(G.vol); } else gm.amp.connect(G.vol);
   G.lim = ac.createDynamicsCompressor();
   G.lim.threshold.value = -1; G.lim.knee.value = 0; G.lim.ratio.value = 20; G.lim.attack.value = .003; G.lim.release.value = .1;
-  G.out = ac.createGain(); G.out.connect(ac.destination);
+}
+function ensureGraph() {
+  if (G.src) return true;
+  if (!G.ok) return false;
+  const ac = getAC(); if (!ac) { G.ok = false; return false; }
+  try { G.src = ac.createMediaElementSource(video); } catch (e) { console.error(e); G.ok = false; return false; }
+  G.ac = ac; cur = null; ensureWorklet();
+  G.out = ac.createGain(); G.guard = ac.createGain(); G.out.connect(G.guard);
+  if (!window.Trk.core.audioSafety?.blocked()) { G.guard.connect(ac.destination); G.guardConnected = true; }
+  buildOutputPath(ac);
   video.addEventListener("play", () => { if (ac.state === "suspended") ac.resume(); });
   rebuild(); applyOut();
   return true;
@@ -768,6 +774,34 @@ function applyOut() {
   G.vol.gain.setTargetAtTime(active() ? dbToGain(settings.fxVolume) : 1, G.ac.currentTime, .03);
   applyNorm();
 }
+// The final guard is separate from G.out so analyser taps survive isolation.
+// Rebuilding before reconnecting discards delay/reverb and filter memory even
+// if the AudioContext was suspended while disconnected.
+on("audioOutputInterrupted", () => {
+  if (G.guard) {
+    try { G.guard.disconnect(); }
+    catch (e) {
+      console.error(e);
+      try { G.guard.gain.cancelScheduledValues(G.ac.currentTime); G.guard.gain.setValueAtTime(0, G.ac.currentTime); } catch (_) {}
+    }
+    G.guardConnected = false;
+  }
+  for (const el of G.extra.keys()) { try { el.pause(); } catch (_) {} }
+});
+on("audioOutputResumed", () => {
+  if (!G.guard || G.guardConnected) return;
+  try {
+    for (const el of G.extra.keys()) { try { el.pause(); } catch (_) {} }
+    const game = G.game || {};
+    for (const n of [...G.eq, game.lp, game.low, game.high, game.amp, game.pan, G.vol, G.norm, G.lim]) {
+      if (n) { try { n.disconnect(); } catch (_) {} }
+    }
+    buildOutputPath(G.ac); rebuild(); applyOut(); rebuildExtraMidiMix();
+    G.guard.gain.cancelScheduledValues(G.ac.currentTime);
+    G.guard.gain.setValueAtTime(1, G.ac.currentTime);
+    G.guard.disconnect(); G.guard.connect(G.ac.destination); G.guardConnected = true;
+  } catch (e) { console.error("Unable to restore the FX output safely", e); }
+});
 /* 🔊 音量の平準化（trk168）：今の曲について補正量を計算し、G.norm に入れる。
    材料の優先順は「ファイルの ReplayGain タグ（library.js の songTagsOf 経由）→ 解析の loudness（media.js）」。
    曲の読み込み（mediaReady）とタグの到着（songTags）でも呼び直される。エフェクトがオフでも働く。 */

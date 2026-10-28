@@ -229,12 +229,13 @@ function lifeAfterJudge(kind) {
   return false;
 }
 function failSound() {
+  if (core.audioSafety?.blocked()) return;
   const ac = window.Trk.media.getAC(); if (!ac) return;
   if (ac.state === "suspended") ac.resume();
   const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
   o.type = "sawtooth"; o.frequency.setValueAtTime(440, t); o.frequency.exponentialRampToValueAtTime(70, t + .7);
   g.gain.setValueAtTime(Math.max(.002, core.settings.seVolume * .6), t); g.gain.exponentialRampToValueAtTime(.0001, t + .8);
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .85);
+  o.connect(g).connect(ac.destination); window.Trk.media.trackOneShot(g, [o]); o.start(t); o.stop(t + .85);
 }
 
 /* ============ ❤ 体力の表示（コンパクト。5以下のハートは並べ、多いときはゲージ） ============ */
