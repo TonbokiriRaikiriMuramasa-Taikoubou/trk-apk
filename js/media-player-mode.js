@@ -805,19 +805,49 @@ function endedMedia() {
   else saveMediaPosition(true);
   renderMedia(); updateMediaSession();
 }
-function updateMediaSession() {
+let sessionHasPosition = false, sessionTrackPending = false;
+function clearMediaSessionPosition() {
   const ms = navigator.mediaSession;
-  if (!ms) return;
-  const s = core.currentSong || {};
-  if (typeof MediaMetadata !== "undefined" && s) {
-    const d = trackDisplayMeta(core.currentSong);   /* 🏷 ロック画面・通知もタグ込みの表示名に揃える（trk167） */
-    try { ms.metadata = new MediaMetadata({ title:d.title || s.title || core.baseName(core.mediaName) || "trk!", artist:d.artist || s.artist || "trk!", album:d.album || s.packName || "trk!", artwork:[{ src:"icons/icon-512.png", sizes:"512x512", type:"image/png" }] }); } catch (_) {}
+  if (!sessionHasPosition || !ms || typeof ms.setPositionState !== "function") return;
+  try { ms.setPositionState(); sessionHasPosition = false; } catch (_) {}
+}
+function updateMediaSessionPosition() {
+  const ms = navigator.mediaSession, v = core.video;
+  if (!ms || typeof ms.setPositionState !== "function") return;
+  if (sessionTrackPending || !core.videoReady || !Number.isFinite(v.duration) || v.duration <= 0 ||
+      !Number.isFinite(v.currentTime) || !Number.isFinite(v.playbackRate) || v.playbackRate === 0) {
+    clearMediaSessionPosition(); return;
   }
   try {
-    if (core.videoReady && Number.isFinite(core.video.duration) && core.video.duration > 0 && typeof ms.setPositionState === "function") {
-      ms.setPositionState({ duration:core.video.duration, playbackRate:core.video.playbackRate || 1, position:Math.max(0, Math.min(core.video.duration, core.video.currentTime || 0)) });
-    }
-  } catch (_) {}
+    ms.setPositionState({duration:v.duration, playbackRate:v.playbackRate, position:Math.max(0, Math.min(v.duration, v.currentTime))});
+    sessionHasPosition = true;
+  } catch (_) { clearMediaSessionPosition(); }
+}
+function updateMediaSessionMetadata() {
+  const ms = navigator.mediaSession;
+  if (!ms || typeof MediaMetadata === "undefined") return;
+  const s = core.currentSong || {};
+  const d = trackDisplayMeta(core.currentSong);   /* 🏷 ロック画面・通知もタグ込みの表示名に揃える（trk167） */
+  try { ms.metadata = new MediaMetadata({ title:d.title || s.title || core.baseName(core.mediaName) || "trk!", artist:d.artist || s.artist || "trk!", album:d.album || s.packName || "trk!", artwork:[{ src:"icons/icon-512.png", sizes:"512x512", type:"image/png" }] }); } catch (_) {}
+}
+function updateMediaSession() {
+  updateMediaSessionMetadata();
+  updateMediaSessionPosition();
+}
+function installMediaSessionObservers() {
+  // The player's render timer stops when its view closes. Keep externally
+  // visible position in sync with discrete media events without polling.
+  for (const type of ["play", "pause", "seeked", "ratechange", "durationchange", "loadedmetadata", "emptied", "ended"]) {
+    core.video.addEventListener(type, updateMediaSessionPosition);
+  }
+  // fx-dock also publishes metadata on play; this later listener restores
+  // the same tag-aware title as the player, even while its view is closed.
+  core.video.addEventListener("play", updateMediaSessionMetadata);
+  core.on("songSelected", () => { sessionTrackPending = true; clearMediaSessionPosition(); updateMediaSessionMetadata(); });
+  core.on("beforeLoad", () => { sessionTrackPending = true; clearMediaSessionPosition(); });
+  core.on("mediaReady", () => { sessionTrackPending = false; updateMediaSession(); });
+  core.on("chart", updateMediaSessionMetadata);
+  core.on("songTags", song => { if (song && core.currentSong && song.key === core.currentSong.key) updateMediaSessionMetadata(); });
 }
 async function sessionSong(dir) {
   const pick = dir > 0 ? window.Trk.library.nextSong : window.Trk.library.prevSong;
@@ -1908,6 +1938,7 @@ function buildMedia() {
   syncMediaExitUI();
   buildVideoKeysUI();
   installMediaSession();
+  installMediaSessionObservers();
   renderInterp();
   syncMediaStage();
   return true;
