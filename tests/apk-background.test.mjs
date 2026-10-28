@@ -158,6 +158,11 @@ test("PiP dismissal while hidden stops reverse after the PiP state is updated", 
   const handler = player.match(/function stopReverseWhenBackgroundDisallowed\(\) \{[\s\S]*?\n\}/);
   assert.ok(handler); assert.match(player, /window\.addEventListener\("trkApkPipChanged", stopReverseWhenBackgroundDisallowed\)/);
   x.w.eval(`let reverseActive=true, reverseLoading=false; function stopReverse(){window._reverseStopped=true; reverseActive=false;} ${handler[0]}\nwindow.addEventListener("trkApkPipChanged",stopReverseWhenBackgroundDisallowed);`);
+  x.core.settings.fxAntenna=true;
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.w._reverseStopped,undefined, "antenna ON can continue reverse after PiP dismissal");
+  x.core.settings.fxAntenna=false;
   x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
   assert.equal(x.w._reverseStopped,undefined);
   x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
