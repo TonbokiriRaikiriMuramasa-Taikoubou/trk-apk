@@ -136,6 +136,39 @@ test("an inactive PiP callback does not interrupt antenna background playback", 
   x.w.close();
 });
 
+test("Android remote playback policy allows foreground, antenna or active PiP", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  let hidden=false;
+  Object.defineProperty(x.d, "hidden", {get:() => hidden, configurable:true});
+  assert.equal(x.w.TrkApkPip.allowsPlaybackStart(),true, "foreground is allowed");
+  hidden=true; assert.equal(x.w.TrkApkPip.allowsPlaybackStart(),false, "eligibility alone is not PiP");
+  x.core.settings.fxAntenna=true; assert.equal(x.w.TrkApkPip.allowsPlaybackStart(),true);
+  x.core.settings.fxAntenna=false;
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  x.video.pause(); assert.equal(x.w.TrkApkPip.allowsPlaybackStart(),true, "paused PiP may resume");
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.w.TrkApkPip.allowsPlaybackStart(),false);
+  x.w.close();
+});
+
+test("PiP dismissal while hidden stops reverse after the PiP state is updated", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  Object.defineProperty(x.d,"hidden",{value:true, configurable:true});
+  const player = fs.readFileSync(new URL("../js/media-player-mode.js", import.meta.url), "utf8");
+  const handler = player.match(/function stopReverseWhenBackgroundDisallowed\(\) \{[\s\S]*?\n\}/);
+  assert.ok(handler); assert.match(player, /window\.addEventListener\("trkApkPipChanged", stopReverseWhenBackgroundDisallowed\)/);
+  x.w.eval(`let reverseActive=true, reverseLoading=false; function stopReverse(){window._reverseStopped=true; reverseActive=false;} ${handler[0]}\nwindow.addEventListener("trkApkPipChanged",stopReverseWhenBackgroundDisallowed);`);
+  x.core.settings.fxAntenna=true;
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.w._reverseStopped,undefined, "antenna ON can continue reverse after PiP dismissal");
+  x.core.settings.fxAntenna=false;
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  assert.equal(x.w._reverseStopped,undefined);
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.w._reverseStopped,true); x.w.close();
+});
+
 test("unsupported or blocked PiP is not treated as an active background mode", async () => {
   const x=setup(); await tick();
   x.w.Capacitor.Plugins.TrkDevice.setPipEligible = async () => ({available:false,eligible:false});

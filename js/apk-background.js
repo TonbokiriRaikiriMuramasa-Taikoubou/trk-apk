@@ -97,6 +97,9 @@
     if (!active) sync();
   });
   window.TrkApkPip = {
+    // Only an active PiP window can override antenna-off background policy.
+    // Eligibility is insufficient and becomes false when PiP is paused.
+    allowsPlaybackStart:() => !document.hidden || !!core.settings.fxAntenna || active,
     shouldKeepForTransition:() => (active || eligible) && wantsPip(),
     checkTransition:() => {
       cancelTransition();
