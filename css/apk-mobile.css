@@ -1,0 +1,86 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later
+   Title/settings use real screen pixels. Gameplay retains trk's 1920×1080 stage. */
+.apk-shell #stage[data-phase="title"] {
+  left:0; top:0; width:100%; height:100%; transform:none !important;
+}
+.apk-shell #stage[data-phase="title"] .screen {
+  display:block; padding:0; overflow:hidden;
+}
+.apk-shell #stage[data-phase="title"] .screen[hidden] { display:none; }
+.apk-shell #stage[data-phase="title"] .card {
+  width:100%; max-width:none; height:100%; max-height:none; border:0; border-radius:0;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.apk-shell .selectGrid { display:block; margin-top:16px; }
+.apk-shell[data-apk-view="library"] .detailCol,
+.apk-shell[data-apk-view="game"] .songCol { display:none; }
+.apk-shell .head { align-items:center; flex-wrap:wrap; gap:10px; }
+.apk-shell .brand h1 { font-size:32px; }
+.apk-shell .brand p { font-size:13px; }
+.apk-shell .headTools { flex-wrap:wrap; }
+.apk-shell .headTools button { min-height:44px; }
+.apk-shell #tvDock { display:none !important; }
+.apk-shell .libHead { flex-wrap:wrap; gap:8px; }
+.apk-shell .libTools { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.apk-shell .libTools input { grid-column:1 / -1; min-width:0; }
+.apk-shell #libList { height:auto; max-height:none; overflow:visible; }
+.apk-shell .libRow { min-height:52px; }
+.apk-shell #selectScreen .screen h2 { font-size:inherit; }
+.apk-shell .grid { grid-template-columns:1fr; }
+.apk-shell .fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.apk-shell .fields input { width:100%; min-width:0; }
+.apk-shell .screen h2 { font-size:28px; }
+.apk-shell .screen .setTitle { font-size:24px; }
+.apk-shell .bannerTitle { font-size:23px; }
+.apk-shell #floatingSafeBtn { bottom:calc(80px + env(safe-area-inset-bottom)); }
+.apk-nav { position:fixed; z-index:1000; bottom:0; left:0; right:0; display:flex; padding:5px max(4px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); background:var(--ui-panel); border-top:1px solid var(--ui-border); box-shadow:0 -6px 24px #0004; }
+.apk-nav[hidden] { display:none; }
+.apk-nav button { flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:5px 2px; border:0; border-radius:12px; background:transparent; color:var(--ui-muted); font-size:20px; }
+.apk-nav button[aria-current="page"] { color:var(--ui-accent-ink,var(--ui-accent)); background:var(--ui-button-hover); }
+.apk-nav-label { font-size:11px; white-space:nowrap; }
+.apk-media-game { min-height:44px; font-size:13px; }
+.apk-shell .mediaHeader { flex-wrap:wrap; }
+@media (min-width: 840px) {
+  .apk-shell #stage[data-phase="title"] .card { padding-left:max(32px,env(safe-area-inset-left)); padding-right:max(32px,env(safe-area-inset-right)); }
+  .apk-nav { max-width:560px; margin:auto; border:1px solid var(--ui-border); border-bottom:0; border-radius:16px 16px 0 0; }
+}
+/* Spectrum stays tucked away in settings rather than occupying the game banner. */
+.apk-shell .specBannerCanvas { display:none !important; }
+/* Content sources stay available without occupying the library by default. */
+.apk-import { margin:10px 0; border:1px solid var(--ui-border); border-radius:14px; background:var(--ui-field); }
+.apk-import summary { min-height:48px; display:flex; align-items:center; padding:10px 14px; cursor:pointer; font-weight:750; }
+.apk-import summary::after { content:"＋"; margin-left:auto; color:var(--ui-muted); }
+.apk-import[open] summary::after { content:"−"; }
+.apk-import .miniActions, .apk-import > .hint { margin:0 12px 12px; }
+.apk-shell #libPanel #mediaOpenBtn, .apk-shell #libPanel #studyOpenBtn { display:none; }
+.apk-shell[data-apk-view="effects"] .songCol,
+.apk-shell[data-apk-view="effects"] .detailCol { display:none; }
+.apk-shell[data-apk-view="effects"] #quickGuide,
+.apk-shell[data-apk-view="game"] #quickGuide { display:none; }
+.apk-effects { min-width:0; color:var(--ui-text); }
+.apk-effects[hidden] { display:none !important; }
+.apk-effects h2 { margin:0 0 14px; font-size:26px; }
+.apk-effect-card { padding:18px; margin-bottom:12px; border:1px solid var(--ui-border); border-radius:16px; background:var(--ui-soft); }
+.apk-effect-card h3 { margin:0 0 5px; font-size:17px; }
+.apk-effect-card p { margin:0 0 12px; color:var(--ui-muted); font-size:13px; line-height:1.5; }
+.apk-effect-card select { width:100%; min-height:48px; padding:10px; border:1px solid var(--ui-border); border-radius:10px; background:var(--ui-field); color:var(--ui-text); }
+.apk-effect-actions { display:flex; gap:8px; margin-top:10px; }
+.apk-effect-actions button { min-height:44px; flex:1; border-radius:10px; }
+.apk-effects-advanced { min-height:44px; font-size:13px; }
+.apk-effects-now { display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:12px; border:1px solid var(--ui-border); border-radius:14px; background:var(--ui-field); }
+.apk-effects-now[hidden] { display:none; }
+.apk-effects-track { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.apk-effects-now button { min-height:44px; }
+.apk-effects-stage .mediaStage { margin-bottom:12px; }
+.apk-media-effects #mediaPlayerMode .mediaHeader,
+.apk-media-effects #mediaPlayerMode .mediaBody { display:none; }
+#mediaPlayerMode .apk-effects { flex:1 1 auto; min-height:0; overflow-y:auto; padding:16px; overscroll-behavior:contain; }
+#mediaPlayerMode .apk-nav { position:static; flex:none; width:100%; max-width:none; margin:0; border-radius:0; }
+.apk-shell .mediaStageCanvas, .apk-shell .videoMaxCanvas { filter:var(--apk-video-filter, none); }
+@media (max-width:360px) { .apk-nav-label { font-size:10px; letter-spacing:-.02em; } }
+.apk-effect-card .apk-eq-title { margin-top:20px; }
+.apk-eq-rows { display:grid; gap:6px; margin:12px 0; }
+.apk-eq-row { display:grid; grid-template-columns:54px minmax(0,1fr) 52px; align-items:center; gap:8px; min-height:40px; font-size:12px; }
+.apk-eq-row input { width:100%; }
+.apk-eq-row output { text-align:right; font-variant-numeric:tabular-nums; }
+#apkEqReset { min-height:44px; font-size:13px; }
