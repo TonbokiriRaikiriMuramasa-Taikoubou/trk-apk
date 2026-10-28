@@ -1,0 +1,6 @@
+# Third-party modules are kept byte-for-byte identical to their upstream packages.
+# Allow their existing space-before-tab formatting without masking other whitespace checks.
+assets/vendor/** whitespace=-space-before-tab
+
+# The Gradle Windows launcher deliberately uses CRLF.
+android/gradlew.bat text eol=crlf whitespace=cr-at-eol
