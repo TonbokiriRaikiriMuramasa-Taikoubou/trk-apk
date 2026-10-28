@@ -273,7 +273,7 @@ addEventListener("keydown", e => {
   if (code === "KeyP" || code === "Escape" || code === "BrowserBack" || code === "GoBack") {
     if (code === "Escape" && e.isTrusted && !e.repeat) escHoldStart();
     if (core.phase === "playing") { e.preventDefault(); window.Trk.play.pauseGame(); }
-    else if (core.phase === "paused") { e.preventDefault(); window.Trk.play.resumeGame(); }
+    else if (core.phase === "paused") { e.preventDefault(); if (e.isTrusted) core.audioSafety?.resume(); window.Trk.play.resumeGame(); }
     else if (core.phase === "title" && core.screen === "settings" && code === "Escape") { e.preventDefault(); core.closeSettings(); }
     return;
   }

@@ -36,6 +36,16 @@ test("a queued repeat-one end event cannot restart playback in a disallowed back
   const x=setup(); x.core.videoReady=true; x.state.allowed=false; x.sandbox.endedMedia();
   assert.deepEqual(x.calls,[]); assert.equal(x.video.currentTime,7);
 });
+test("an old pending track load stays cancelled even after explicit output resumption", async () => {
+  const x=setup(); let version=0, blocked=false;
+  x.core.audioSafety={version:()=>version,blocked:()=>blocked};
+  const p=x.sandbox.playSong(x.song); version++; blocked=true; blocked=false;
+  x.finish(); await p; assert.deepEqual(x.calls,[]);
+});
+test("an old remote track request cannot start a game after an interruption", async () => {
+  const x=setup(); let version=0; x.core.audioSafety={version:()=>version,blocked:()=>false};
+  const p=x.sandbox.sessionSong(1); version++; x.finish(); await p; assert.deepEqual(x.calls,[]);
+});
 test("a completed load still starts playback when the Android policy allows it", async () => {
   const x=setup(); const p=x.sandbox.playSong(x.song); x.finish(); await p;
   assert.deepEqual(x.calls,["play"]); assert.equal(x.video.paused,false);

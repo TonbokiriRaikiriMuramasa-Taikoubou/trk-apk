@@ -17,7 +17,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     fs.readFile(file,(err,data) => {if(err) return res.writeHead(404).end(); res.writeHead(200,{"Content-Type":({".html":"text/html",".js":"text/javascript",".css":"text/css",".json":"application/json"})[path.extname(file)]||"application/octet-stream"}); res.end(data);});
   });
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
-  let dom, hidden=false, recording=false; const called=[], failures=[];
+  let dom, hidden=false, recording=false, noisyCallback; const called=[], failures=[];
   const vc=new VirtualConsole(); vc.on("jsdomError",e=>failures.push(e.message));
   try {
     dom=await JSDOM.fromURL(`http://127.0.0.1:${server.address().port}/`, {resources:"usable",runScripts:"dangerously",pretendToBeVisual:true,virtualConsole:vc,beforeParse(w) {
@@ -30,7 +30,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
         }
         return add.call(this,type,fn,opts);
       };
-      if(native) w.Capacitor={isNativePlatform:()=>true,Plugins:{App:{addListener:()=>Promise.resolve({remove(){}}),exitApp:()=>Promise.resolve()},TrkDevice:{setPipEligible:async ({enabled})=>({available:true,eligible:enabled}),setOrientationLock:async ({locked})=>({locked})}}};
+      if(native) w.Capacitor={isNativePlatform:()=>true,Plugins:{App:{addListener:()=>Promise.resolve({remove(){}}),exitApp:()=>Promise.resolve()},TrkDevice:{addListener:(name,cb)=>{if(name==="audioBecomingNoisy") noisyCallback=cb; return Promise.resolve({remove(){}});},setPipEligible:async ({enabled})=>({available:true,eligible:enabled}),setOrientationLock:async ({locked})=>({locked})}}};
       Object.defineProperty(w.navigator,"serviceWorker",{value:{register:async()=>({}),getRegistrations:async()=>[]}});
       w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
       w.fetch=async url => String(url).endsWith("assets/mmd/lat-miku/preset.json") ? {ok:true,status:200,json:async()=>JSON.parse(fs.readFileSync(path.join(root,"assets/mmd/lat-miku/preset.json"),"utf8"))} : {ok:false,status:404,json:async()=>({}),text:async()=>""};
@@ -86,6 +86,13 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     core.settings.autoPlay=true; hidden=true; d.dispatchEvent(new w.Event("visibilitychange"));
     assert.equal(gamePauses,1,"auto-play keeps the existing antenna policy");
     w.Trk.play.pauseGame=pauseGame;
+    if (native) {
+      core.phase="title"; paused=false;
+      assert.equal(typeof noisyCallback,"function"); noisyCallback();
+      assert.equal(core.audioSafety.blocked(),true); assert.equal(paused,true);
+      await assert.rejects(core.video.play(),error=>error.name==="AbortError");
+      core.audioSafety.resume(); assert.equal(core.audioSafety.blocked(),false);
+    }
     assert.deepEqual(failures,[]);
   } finally {if(dom) dom.window.close(); await new Promise(resolve=>server.close(resolve));}
 });

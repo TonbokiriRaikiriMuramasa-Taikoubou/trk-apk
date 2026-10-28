@@ -916,9 +916,10 @@ addEventListener("DOMContentLoaded", () => {
     if (!["Enter", "Space"].includes(e.code)) return;
     e.preventDefault(); sampleInput.click();
   });
-  songPlay.addEventListener("click", async () => {
+  songPlay.addEventListener("click", async event => {
     if (!core.videoReady) return;
     if (!core.video.paused) { core.video.pause(); return; }
+    if (event.isTrusted) core.audioSafety?.resume();
     try {
       if (core.video.muted) core.video.muted = false;
       if (core.video.ended) { try { core.video.currentTime = typeof previewStartFor === "function" ? window.Trk.library.previewStartFor() : 0; } catch (_) {} }
@@ -1021,6 +1022,7 @@ addEventListener("DOMContentLoaded", () => {
     if (voices.has(token)) { e.preventDefault(); e.stopImmediatePropagation(); noteOff(token); return; }
     if (!isTyping(e.target) && e.code !== "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) e.stopImmediatePropagation();
   }, true);
+  core.on("audioOutputInterrupted", stopAllNotes);
   window.addEventListener("blur", stopAllNotes);
   document.addEventListener("visibilitychange", () => { if (document.hidden) stopAllNotes(); });
 

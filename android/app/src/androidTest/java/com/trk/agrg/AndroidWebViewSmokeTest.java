@@ -79,6 +79,23 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void simulatedNoisyCallbackReachesWebViewAndBlocksRestart() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.Trk.core.audioSafety");
+            // Exercise the plugin-to-JS bridge only; no real system broadcast or
+            // physical audio route change is simulated by this test.
+            scenario.onActivity(activity -> {
+                TrkDevicePlugin device = (TrkDevicePlugin) activity.getBridge().getPlugin("TrkDevice").getInstance();
+                assertNotNull(device);
+                device.audioOutputBecameNoisy();
+            });
+            eventually(scenario, "window.Trk.core.audioSafety.blocked()");
+            evaluate(scenario, "window._blockedPlay='pending'; Trk.core.video.play().then(() => window._blockedPlay='played', e => window._blockedPlay=e.name)");
+            eventually(scenario, "window._blockedPlay === 'AbortError'");
+        }
+    }
+
+    @Test
     public void freshStartupBackAndNativeOrientationBridge() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && window.Trk && window.Trk.core && document.querySelectorAll('.apk-nav button').length === 5 && document.getElementById('welcomeBox') && !document.getElementById('welcomeBox').hidden");
