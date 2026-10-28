@@ -9,7 +9,7 @@
 3. CIのdebug鍵はランナーごとに変わり得るため、別ビルドを上書きインストールできない場合がある。既存アプリの削除・データ消去はユーザーデータを失うので、先にバックアップを書き出し、内容を確認する。別署名のインストールは既存データを保持したまま強制しない。
 4. 手元の音源・動画を使う場合は、著作権と個人情報に注意し、テスト素材やログを公開しない。下記の記録欄を複製し、未実施の項目を成功扱いしない。
 
-補助的に `.github/workflows/android-emulator-smoke.yml` でAPI 35エミュレーター上の起動・Backキー・向き固定ブリッジを自動確認する。エミュレーターのJSクリックは物理タッチや10秒長押し、Bluetooth、音声、PiP、機種固有動作を証明しない。
+補助的に `.github/workflows/android-emulator-smoke.yml` でAPI 35エミュレーター上の起動・Backキー・向き固定ブリッジを自動確認する。[実行結果](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40748761212)（`77bdf9e`）は成功。エミュレーターのJSクリックは物理タッチや10秒長押し、Bluetooth、音声、PiP、機種固有動作を証明しない。
 
 ## 記録欄（端末・ビルドごとに複製）
 

@@ -57,7 +57,7 @@ cd android && ./gradlew assembleDebug
 
 - `npm run check` は709件成功（37スイート）。`npm run cap:sync`、`git diff --check` も成功。`npm run check` には `tools/check-security.mjs` などの静的検査も含む。JSの単体・結合テストはjsdomやモックであり、Androidネイティブコードのコンパイル、描画、実音声、Bluetoothを検証しない。
 - 作業環境にはJDK／Android SDKがないが、GitHub Actionsの [初回成功ビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40746889673)（コミット `aa02acc`）で `npm ci`、`npm run check`、`cap:sync`、Javaを含む `assembleDebug` が成功し、debug APKが7日間の成果物として保存された。debug APKはGradleのdebug鍵で署名され、一般配布用ではない。**実機動作は未確認。** レビューでは以前の版を390×844の実ブラウザーで確認しているが、この環境ではChromiumのシステムライブラリ不足により今回の修正後のレイアウトは確認できていない。
-- 実機の手順と記録欄は [ANDROID-DEVICE-CHECKS.md](ANDROID-DEVICE-CHECKS.md)。段階的な開発・採らなかった案は [decisions/0001-android-milestones.md](decisions/0001-android-milestones.md)。
+- [Android API 35エミュレーターのスモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40748761212)（コミット `77bdf9e`）で、初回起動・Android Backキーでの初回案内終了・JSからネイティブ向き固定／解除のブリッジを自動検査し成功。エミュレーター上のJSクリックであり、物理タッチ・10秒長押し・音声・Bluetooth・PiP・実機動作は検査していない。実機の手順と記録欄は [ANDROID-DEVICE-CHECKS.md](ANDROID-DEVICE-CHECKS.md)。段階的な開発・採らなかった案は [decisions/0001-android-milestones.md](decisions/0001-android-milestones.md)。
 - 優先：SDK／JDK環境でクリーンビルドし、Android実機で取り込み・再接続、再生／FX／ゲーム、書斎、戻る、向き固定、PiP、アンテナ、端末ロックと出力切替を確認。特にPiP遷移・停止・外部ピッカー・字幕・画面向きの競合を評価する。
 - Media3の導入・キューと既存FXの両立・権限・通知・Audio Focus・Bluetoothを設計し、Shokz OpenRun Pro 2で実機検証する。サービスやアプリが終了した場合の挙動も決める。
 - アプリID、ゲーム画面の向き、その他素材の配布条件は未決。SAF／MediaStore、遅延タップ補正、APK同梱docs削減、無音継続も今後の課題。
