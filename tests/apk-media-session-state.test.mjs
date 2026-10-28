@@ -7,20 +7,22 @@ import vm from "node:vm";
 const source = fs.readFileSync(new URL("../js/media-player-mode.js", import.meta.url), "utf8");
 const functions = ["clearMediaSessionPosition", "updateMediaSessionPosition", "updateMediaSessionMetadata", "updateMediaSession", "installMediaSessionObservers"];
 function setup() {
-  const events = {}, hooks = {}, positions = [], metadata = [];
+  const events = {}, hooks = {}, positions = [], metadata = [], state = {reverse:false, loading:false};
   const video = {duration:180, currentTime:12, playbackRate:1, addEventListener(type, fn) { (events[type] ||= []).push(fn); }};
   const core = {video, videoReady:true, currentSong:{key:"one", title:"Original"}, mediaName:"file", baseName:n => n, on(type, fn) { (hooks[type] ||= []).push(fn); }};
   const session = {setPositionState(...args) { positions.push(args.length ? {...args[0]} : null); }, set metadata(value) { metadata.push(value); }};
   const sandbox = {core, navigator:{mediaSession:session}, Number, Math,
     MediaMetadata:class {constructor(value) { Object.assign(this, value); }},
     trackDisplayMeta:s => ({title:s?.display || s?.title, artist:"Artist", album:"Album"})};
+  Object.defineProperty(sandbox, "reverseActive", {get:() => state.reverse});
+  Object.defineProperty(sandbox, "reverseLoading", {get:() => state.loading});
   const extracted = functions.map(name => {
     const match = source.match(new RegExp(`function ${name}\\(\\) \\{[\\s\\S]*?\\n\\}`));
     assert.ok(match, `real ${name} exists`); return match[0];
   }).join("\n");
   assert.match(source, /installMediaSessionObservers\(\);/, "observer installer is wired into the app");
   vm.runInNewContext(`let sessionHasPosition = false, sessionTrackPending = false;\n${extracted}\ninstallMediaSessionObservers();`, sandbox);
-  return {video, core, session, navigator:sandbox.navigator, positions, metadata, emit:(type) => (events[type] || []).forEach(fn => fn()), hook:(type, ...args) => (hooks[type] || []).forEach(fn => fn(...args))};
+  return {video, core, state, session, navigator:sandbox.navigator, positions, metadata, emit:(type) => (events[type] || []).forEach(fn => fn()), hook:(type, ...args) => (hooks[type] || []).forEach(fn => fn(...args))};
 }
 test("session position follows seeks, rate changes and playback even with the player closed", () => {
   const x = setup();
@@ -29,6 +31,14 @@ test("session position follows seeks, rate changes and playback even with the pl
   x.video.playbackRate=1.5; x.emit("ratechange"); assert.equal(x.positions.at(-1).playbackRate,1.5);
   x.video.currentTime=400; x.emit("pause"); assert.equal(x.positions.at(-1).position,180);
   const count=x.positions.length; x.emit("timeupdate"); assert.equal(x.positions.length,count, "avoid per-frame session updates");
+});
+test("reverse seeks clear the misleading position once, then do not publish every frame", () => {
+  const x=setup(); x.emit("play"); x.state.reverse=true; x.core.refreshMediaSessionPosition();
+  assert.equal(x.positions.at(-1),null); const count=x.positions.length;
+  for (let i=0; i<40; i++) x.emit("seeked");
+  assert.equal(x.positions.length,count);
+  x.state.reverse=false; x.video.currentTime=20; x.core.refreshMediaSessionPosition();
+  assert.equal(x.positions.at(-1).position,20);
 });
 test("switching or unloading a track clears old position before publishing a new one", () => {
   const x = setup(); x.emit("play");

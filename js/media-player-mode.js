@@ -155,6 +155,12 @@ let mediaRate = Number(core.settings.mediaRate) || 1, sleepTimer = 0, sleepUntil
 let seeking = false, queueFilter = "", videoBinding = null;
 let reverseActive = false, reverseLoading = false, reverseTimer = 0, reverseSource = null, reverseGain = null, reverseAttempt = 0;
 let reverseBuffer = null, reverseBufferKey = "", reverseVideoMuted = false, reverseStartAt = 0, reverseClockAt = 0;
+// Reverse playback uses Web Audio and advances frames while the video element
+// is paused. Report actual playback activity rather than the element alone.
+function mediaSessionIsPlaying() {
+  return reverseActive ? !reverseLoading : !core.video.paused && !core.video.ended;
+}
+core.mediaSessionIsPlaying = mediaSessionIsPlaying;
 let loopTimer = 0;
 let loopA = null, loopB = null, loopActive = false, loopKeyDown = false;
 let wallOverlay, wallClockNode, wallDateNode, wallNode, wallStyleNode, wallClockCheck, wallPlaybackNode, wallTriggerNode, wallFileNode, wallResetNode;
@@ -438,6 +444,7 @@ function stopReverse(resume = false, silent = true) {
   stopReverseAudio();
   core.video.muted = reverseVideoMuted; core.video.playbackRate = mediaRate;
   if (resume && core.videoReady) core.video.play().catch(() => {});
+  core.syncMediaSessionPlaybackState?.(); core.refreshMediaSessionPosition?.();
   if (!silent && typeof showToast === "function") window.Trk.play.showToast(tr("mediaForward"));
   renderMedia();
 }
@@ -492,6 +499,7 @@ async function startReverseAt(position, restart = false) {
   if (!reverseActive) { reverseVideoMuted = !!core.video.muted; reverseActive = true; }
   reverseLoading = true; clearInterval(reverseTimer); reverseTimer = 0; stopReverseAudio();
   core.video.pause(); core.video.muted = true;
+  core.syncMediaSessionPlaybackState?.(); core.refreshMediaSessionPosition?.();
   let start = Math.max(0, Math.min(core.video.duration, Number(position) || 0));
   if (!restart && start <= .02) start = core.video.duration;
   try { core.video.currentTime = start; } catch (_) {}
@@ -524,6 +532,7 @@ async function startReverseAt(position, restart = false) {
     }
   }
   reverseStartAt = start; reverseClockAt = reverseClockSeconds(); reverseLoading = false;
+  core.syncMediaSessionPlaybackState?.();
   reverseTimer = setInterval(reverseTick, 25);
   renderMedia();
 }
@@ -828,7 +837,9 @@ function clearMediaSessionPosition() {
 function updateMediaSessionPosition() {
   const ms = navigator.mediaSession, v = core.video;
   if (!ms || typeof ms.setPositionState !== "function") return;
-  if (sessionTrackPending || !core.videoReady || !Number.isFinite(v.duration) || v.duration <= 0 ||
+  // Reverse uses a separate clock and repeatedly seeks the paused video. Do
+  // not publish a forward-extrapolated or per-frame position to the OS.
+  if (reverseActive || reverseLoading || sessionTrackPending || !core.videoReady || !Number.isFinite(v.duration) || v.duration <= 0 ||
       !Number.isFinite(v.currentTime) || !Number.isFinite(v.playbackRate) || v.playbackRate === 0) {
     clearMediaSessionPosition(); return;
   }
@@ -849,6 +860,7 @@ function updateMediaSession() {
   updateMediaSessionPosition();
 }
 function installMediaSessionObservers() {
+  core.refreshMediaSessionPosition = updateMediaSessionPosition;
   // The player's render timer stops when its view closes. Keep externally
   // visible position in sync with discrete media events without polling.
   for (const type of ["play", "pause", "seeked", "ratechange", "durationchange", "loadedmetadata", "emptied", "ended"]) {
@@ -1873,7 +1885,10 @@ function buildMedia() {
   });
   core.on("phase", p => { if (p !== "title" && mediaOpen) closeMedia(false); });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden && mediaOpen) { releaseHeldLoop(); stopReverse(false, true); core.video.pause(); }
+    if (document.hidden && mediaOpen) {
+      releaseHeldLoop();
+      if (!core.keepInBackground?.()) { stopReverse(false, true); core.video.pause(); }
+    }
     else if (!document.hidden && mediaOpen) updateWakeLock();   /* 🔆 タブに戻ったら取り直し（非表示で自動解放されるため。trk164） */
   });
 

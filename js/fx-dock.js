@@ -305,16 +305,15 @@ Object.assign(TEXT.ko, {
 });
 
 /* ============ 📡 アンテナ：バックグラウンド再生 ============
-   library.js（プレビューを止める）・main.js（プレイを一時停止）より先に visibilitychange を受け取り、
-   続けてよい場面だけ止める処理を飛ばす。自分で遊んでいる最中は止める（記録のため） */
+   再生停止の各リスナーだけが共通の判定を使う。イベント自体は伝播させ、
+   シンセ・シーク・ループ等の一時操作は背景移行時に必ず解除する。 */
 const keepAlive = () => core.settings.fxAntenna &&
   (core.phase === "title" || core.phase === "ended" || (core.phase === "playing" && core.settings.autoPlay));
 function wakeAC() { if (typeof audioCtx !== "undefined" && window.Trk.media.audioCtx && window.Trk.media.audioCtx.state === "suspended") window.Trk.media.audioCtx.resume().catch(() => {}); }
-document.addEventListener("visibilitychange", e => {
-  if (!document.hidden) return;
+core.keepInBackground = () => keepAlive() || !!window.TrkApkPip?.shouldKeepForTransition();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden || !core.keepInBackground()) return;
   const pip = window.TrkApkPip;
-  if (!keepAlive() && !(pip && pip.shouldKeepForTransition())) return;
-  e.stopImmediatePropagation();
   if (!keepAlive() && pip) pip.checkTransition();
   wakeAC();                                            // 裏ではブラウザが音の処理を止めることがあるので、再開を試みる
 }, true);
@@ -329,6 +328,11 @@ on("beforePlay", skipCountsIfHidden);
 
 /* ============ ロック画面・通知の操作（Media Session） ============ */
 const ms = "mediaSession" in navigator ? navigator.mediaSession : null;
+core.syncMediaSessionPlaybackState = () => {
+  if (!ms) return;
+  const playing = typeof core.mediaSessionIsPlaying === "function" ? core.mediaSessionIsPlaying() : !core.video.paused && !core.video.ended;
+  try { ms.playbackState = playing ? "playing" : "paused"; } catch (_) {}
+};
 const setAct = (a, f) => { try { ms.setActionHandler(a, f); } catch (_) {} };
 async function goNext() {
   if (typeof nextSong !== "function" || typeof selectSong !== "function") return;
@@ -1072,8 +1076,8 @@ addEventListener("DOMContentLoaded", () => {
   const mo = new MutationObserver(update);
   const sel = quick.querySelector("select"); if (sel) mo.observe(sel, { childList:true });
   for (const r of mirrors) if (r.oVal) mo.observe(r.oVal, { childList:true, characterData:true, subtree:true });
-  core.video.addEventListener("play", () => { if (ms) ms.playbackState = "playing"; msMeta(); wakeAC(); update(); });
-  core.video.addEventListener("pause", () => { if (ms) ms.playbackState = "paused"; update(); });
+  core.video.addEventListener("play", () => { core.syncMediaSessionPlaybackState(); msMeta(); wakeAC(); update(); });
+  core.video.addEventListener("pause", () => { core.syncMediaSessionPlaybackState(); update(); });
   on("chart", msMeta);
   on("language", update);
   render(true);
