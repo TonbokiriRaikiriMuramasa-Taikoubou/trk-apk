@@ -10,7 +10,10 @@ cd android || exit 1
 ./gradlew --no-daemon :app:connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
 status=${PIPESTATUS[0]}
 if (( status != 0 )); then
-  tail -n 35 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
+  tail -n 80 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
+  # A crashing instrumentation process may not leave JUnit results. The
+  # disposable emulator's filtered logcat helps diagnose that case.
+  adb logcat -d -t 1500 -s AndroidRuntime:E ActivityManager:W ActivityTaskManager:W TestRunner:I '*:S' | tail -n 120 | sed 's/^/::error::/' || true
   # Publish concise JUnit failures as check annotations, not just a report file.
   python3 - <<'PY'
 import glob, xml.etree.ElementTree as ET
