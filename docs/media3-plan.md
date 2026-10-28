@@ -26,6 +26,8 @@ Androidの[公式ガイド](https://developer.android.com/media/media3/session/b
 
 段階Aの候補は、WebViewを再生主体のまま維持し、Media3の `MediaSessionService` と `SimpleBasePlayer` で状態・命令をJSと中継すること。既存FX・解析・譜面同期を守りやすいが、WebView／プロセスが停止すれば再生主体は残らず、**それだけでは安定したバックグラウンド再生にならない**。WebViewのMedia SessionがBluetoothや通知に橋渡しされない端末では、現行のWeb側修正は外部操作に効かない可能性がある。実機で検証し、不足する場合に限り段階BとしてFXなしの聴取専用ExoPlayerを検討する（全面移行はしない）。切替の同時発音や状態消失は防ぐ。
 
+[段階Aの詳細設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)に状態・命令・世代・競合・失敗時の候補を整理した。設計段階でありサービスやMedia3はまだ実装していない。
+
 段階Aを実装する前に次を検証する。
 
 - mediaPlayback型foreground serviceとAndroid 14以降の `FOREGROUND_SERVICE_MEDIA_PLAYBACK` 権限、通知、Android 12以降の背景起動制限。アンテナONでアプリ前面から再生開始した時点を候補とし、開始／停止と失敗時の整合性を設計する。[Android公式の再生サービス](https://developer.android.com/media/media3/session/background-playback)。

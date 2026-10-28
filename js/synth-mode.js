@@ -403,7 +403,7 @@ addEventListener("DOMContentLoaded", () => {
   let assignMode = false, pendingMidi = null;
   let audio = null, synthBus = null, synthLimiter = null, analyser = null, visualBins = null;
   let visualRaf = 0, lastDraw = 0, pressTimer = 0, longPressed = false;
-  const sampleBank = new Map(), voices = new Map(), pressedMidi = new Map();
+  const sampleBank = new Map(), voices = new Map(), soundingVoices = new Set(), pressedMidi = new Map();
   let sourceSerial = 1;
   let statusKey = "", statusVars = null;
 
@@ -600,7 +600,7 @@ addEventListener("DOMContentLoaded", () => {
     }
     if (!sourceNodes.size) { try { filter.disconnect(); envelope.disconnect(); } catch (_) {} return; }
     const voice = { token, keyMidi, midi, filter, envelope, sourceNodes, release:env.release, releasing:false };
-    voices.set(token, voice);
+    voices.set(token, voice); soundingVoices.add(voice);
     pressedMidi.set(keyMidi, (pressedMidi.get(keyMidi) || 0) + 1); updateSelectedNote(keyMidi, true);
     setStatus("");
   }
@@ -621,11 +621,28 @@ addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       for (const item of voice.sourceNodes.values()) { try { item.source.disconnect(); item.gain.disconnect(); } catch (_) {} }
       try { voice.filter.disconnect(); voice.envelope.disconnect(); } catch (_) {}
+      soundingVoices.delete(voice);
       if (voices.get(token) === voice) voices.delete(token);
     }, Math.ceil(Math.max(.03, voice.release) * 1000) + 100);
   }
   function noteOff(token) { releaseVoice(token); }
   function stopAllNotes() { for (const token of Array.from(voices.keys())) releaseVoice(token); }
+  // A normal note-off deliberately leaves an audible release tail. On an
+  // output disconnect, also cut those tails immediately, including notes that
+  // were already released and no longer occur in the held-voice map.
+  function silenceInterruptedNotes() {
+    stopAllNotes();
+    const now = audio ? audio.currentTime : 0;
+    for (const voice of Array.from(soundingVoices)) {
+      try { voice.envelope.gain.cancelScheduledValues(now); voice.envelope.gain.setValueAtTime(0, now); } catch (_) {}
+      for (const item of voice.sourceNodes.values()) {
+        try { item.source.stop(now); } catch (_) {}
+        try { item.source.disconnect(); item.gain.disconnect(); } catch (_) {}
+      }
+      try { voice.filter.disconnect(); voice.envelope.disconnect(); } catch (_) {}
+      soundingVoices.delete(voice);
+    }
+  }
   function updateSourceVoices(source) {
     if (!audio) return;
     for (const voice of voices.values()) {
@@ -1022,7 +1039,7 @@ addEventListener("DOMContentLoaded", () => {
     if (voices.has(token)) { e.preventDefault(); e.stopImmediatePropagation(); noteOff(token); return; }
     if (!isTyping(e.target) && e.code !== "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) e.stopImmediatePropagation();
   }, true);
-  core.on("audioOutputInterrupted", stopAllNotes);
+  core.on("audioOutputInterrupted", silenceInterruptedNotes);
   window.addEventListener("blur", stopAllNotes);
   document.addEventListener("visibilitychange", () => { if (document.hidden) stopAllNotes(); });
 

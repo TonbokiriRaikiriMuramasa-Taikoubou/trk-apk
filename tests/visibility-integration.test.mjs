@@ -87,8 +87,30 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     assert.equal(gamePauses,1,"auto-play keeps the existing antenna policy");
     w.Trk.play.pauseGame=pauseGame;
     if (native) {
-      core.phase="title"; paused=false;
-      assert.equal(typeof noisyCallback,"function"); noisyCallback();
+      // Real synth listeners with fake Web Audio nodes: both a held note and an
+      // already-released envelope tail must disconnect on the native event.
+      hidden=false; d.dispatchEvent(new w.Event("visibilitychange")); core.phase="title";
+      core.settings.synthModeDisabled=false; core.settings.synthModeFastStart=true;
+      const sources=[];
+      const param=()=>({value:1,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},cancelScheduledValues(){},cancelAndHoldAtTime(){},setTargetAtTime(){}});
+      const node=()=>({connect(){},disconnect(){},gain:param(),frequency:param(),Q:param()});
+      const ac={currentTime:5,state:"running",destination:{},createGain:node,createBiquadFilter:node,
+        createDynamicsCompressor:()=>({...node(),threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()}),
+        createAnalyser:()=>({...node(),frequencyBinCount:32,getByteFrequencyData(){}}),
+        createOscillator:()=>{ const s={...node(),detune:param(),start(){},stop(){},disconnected:false,disconnect(){this.disconnected=true;}}; sources.push(s); return s; }};
+      w.TrkFX={...w.TrkFX,tap:()=>null}; w.Trk.media.getAC=()=>ac;
+      const power=d.querySelector("#fxDock .dockPow");
+      power.dispatchEvent(new w.MouseEvent("pointerdown",{bubbles:true,button:0}));
+      await new Promise(resolve=>setTimeout(resolve,250));
+      power.dispatchEvent(new w.MouseEvent("pointerup",{bubbles:true,button:0}));
+      const synth=d.getElementById("synthMode"); assert.equal(synth.hidden,false);
+      const key=synth.querySelector("button[data-midi]");
+      const pointer=(type,id)=>{ const event=new w.MouseEvent(type,{bubbles:true,button:0}); Object.defineProperty(event,"pointerId",{value:id}); key.dispatchEvent(event); };
+      pointer("pointerdown",1); pointer("pointerup",1); pointer("pointerdown",2);
+      assert.equal(sources.length,2,"one release tail and one held voice exist");
+      assert.equal(sources.some(s=>s.disconnected),false);
+      paused=false; assert.equal(typeof noisyCallback,"function"); noisyCallback();
+      assert.ok(sources.every(s=>s.disconnected),"output event immediately disconnects held and released synth voices");
       assert.equal(core.audioSafety.blocked(),true); assert.equal(paused,true);
       await assert.rejects(core.video.play(),error=>error.name==="AbortError");
       core.audioSafety.resume(); assert.equal(core.audioSafety.blocked(),false);
