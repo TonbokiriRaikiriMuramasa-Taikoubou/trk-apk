@@ -1963,6 +1963,9 @@ function buildMedia() {
   buildVideoKeysUI();
   installMediaSession();
   installMediaSessionObservers();
+  // apk-background installs its PiP-state listener while scripts load, before
+  // this DOMContentLoaded setup. Check the updated state on PiP dismissal.
+  window.addEventListener("trkApkPipChanged", stopReverseWhenBackgroundDisallowed);
   renderInterp();
   syncMediaStage();
   return true;

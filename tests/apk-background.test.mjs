@@ -151,6 +151,19 @@ test("Android remote playback policy allows foreground, antenna or active PiP", 
   x.w.close();
 });
 
+test("PiP dismissal while hidden stops reverse after the PiP state is updated", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  Object.defineProperty(x.d,"hidden",{value:true, configurable:true});
+  const player = fs.readFileSync(new URL("../js/media-player-mode.js", import.meta.url), "utf8");
+  const handler = player.match(/function stopReverseWhenBackgroundDisallowed\(\) \{[\s\S]*?\n\}/);
+  assert.ok(handler); assert.match(player, /window\.addEventListener\("trkApkPipChanged", stopReverseWhenBackgroundDisallowed\)/);
+  x.w.eval(`let reverseActive=true, reverseLoading=false; function stopReverse(){window._reverseStopped=true; reverseActive=false;} ${handler[0]}\nwindow.addEventListener("trkApkPipChanged",stopReverseWhenBackgroundDisallowed);`);
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  assert.equal(x.w._reverseStopped,undefined);
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.w._reverseStopped,true); x.w.close();
+});
+
 test("unsupported or blocked PiP is not treated as an active background mode", async () => {
   const x=setup(); await tick();
   x.w.Capacitor.Plugins.TrkDevice.setPipEligible = async () => ({available:false,eligible:false});
