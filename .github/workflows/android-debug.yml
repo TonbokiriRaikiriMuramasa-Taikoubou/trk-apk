@@ -12,21 +12,35 @@ permissions:
 jobs:
   debug:
     name: Check and build debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # GitHub's Ubuntu image includes the command-line tools and accepted licenses.
       - name: Install Android SDK 36
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        shell: bash
+        run: |
+          set -o pipefail
+          if [[ -z "${ANDROID_HOME:-}" || ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]]; then
+            echo '::error::Android SDK command-line tools not found on runner'
+            exit 1
+          fi
+          set +e
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 2>&1 | tee /tmp/trk-sdk.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            tail -n 20 /tmp/trk-sdk.log | sed 's/^/::error::/'
+            exit "$status"
+          fi
       - name: Install dependencies
         run: npm ci
       - name: Check web source
@@ -35,7 +49,17 @@ jobs:
         run: npm run cap:sync
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          ./gradlew --no-daemon assembleDebug 2>&1 | tee /tmp/trk-gradle.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            tail -n 30 /tmp/trk-gradle.log | sed 's/^/::error::/'
+            exit "$status"
+          fi
       - name: Record checksum
         working-directory: android/app/build/outputs/apk/debug
         run: sha256sum app-debug.apk > SHA256SUMS.txt
