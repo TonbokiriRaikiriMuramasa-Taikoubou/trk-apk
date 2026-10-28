@@ -6,7 +6,8 @@ adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
 adb shell dumpsys webviewupdate | head -30 || true
 cd android || exit 1
-./gradlew --no-daemon connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
+# Scope to the app; generated Cordova plugin modules are not our test target.
+./gradlew --no-daemon :app:connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
 status=${PIPESTATUS[0]}
 if (( status != 0 )); then
   tail -n 35 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
