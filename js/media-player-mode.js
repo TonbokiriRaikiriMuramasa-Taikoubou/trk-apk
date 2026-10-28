@@ -830,8 +830,20 @@ async function sessionSong(dir) {
 function installMediaSession() {
   const ms = navigator.mediaSession; if (!ms) return;
   const act = (name, fn) => { try { ms.setActionHandler(name, fn); } catch (_) {} };
-  act("play", () => mediaActive() ? playPause() : (core.phase === "paused" ? window.Trk.play.resumeGame() : core.video.play().catch(() => {})));
-  act("pause", () => mediaActive() ? playPause() : (core.phase === "playing" ? window.Trk.play.pauseGame() : core.video.pause()));
+  // System play/pause actions are commands, not toggle requests. Repeated
+  // Bluetooth or notification commands must never reverse the requested state.
+  act("play", () => {
+    if (mediaActive()) {
+      if (!reverseActive && !reverseLoading && (core.video.paused || core.video.ended)) playPause();
+    } else if (core.phase === "paused") window.Trk.play.resumeGame();
+    else if (core.video.paused || core.video.ended) core.video.play().catch(() => {});
+  });
+  act("pause", () => {
+    if (mediaActive()) {
+      if (reverseActive || reverseLoading || !core.video.paused) playPause();
+    } else if (core.phase === "playing") window.Trk.play.pauseGame();
+    else if (!core.video.paused) core.video.pause();
+  });
   act("previoustrack", () => mediaActive() ? stepMedia(-1) : sessionSong(-1));
   act("nexttrack", () => mediaActive() ? stepMedia(1) : sessionSong(1));
   act("seekbackward", d => seekBy(-(d && d.seekOffset || 10)));

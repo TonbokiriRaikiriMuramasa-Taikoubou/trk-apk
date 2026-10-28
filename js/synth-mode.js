@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-/* ==========================================================================
+/* ========================================================================== 
    trk! synth-mode.js — 🎹 play-along synthesizer
    Open by long-pressing the FX dock's speaker/power button. Uses Web Audio
    oscillators (plus optional local one-shot samples); no audio is uploaded.

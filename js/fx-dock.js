@@ -44,6 +44,9 @@ core.settings.fxDockOpen = core.prefs.fxDockOpen === true;      // くわしい�
 core.settings.ampOpen = typeof core.prefs.ampOpen === "boolean" ? core.prefs.ampOpen : true;   // 🔥 TRKアンプの欄は最初から開いておく（「なんだこれ！」と気づいてもらう。触って閉じた人の記憶は残す）
 core.settings.castPolicy = core.pick(core.settings.castPolicy, ["off", "antenna"], "off");
 core.settings.backgroundPolicy = core.pick(core.settings.backgroundPolicy, ["off", "antenna", "corner"], core.settings.castPolicy === "antenna" ? "antenna" : "off");
+const apkNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform());
+// Android keeps the background-playback switch discoverable in the title.
+if (apkNative) core.settings.backgroundPolicy = "corner";
 core.settings.fxAntenna = core.settings.backgroundPolicy === "off" ? false : !!core.prefs.fxAntenna;
 const antShapePref = core.prefs.fxAntennaShape === "miko" ? "reimu" : core.prefs.fxAntennaShape;   /* 旧保存値の移行 */
 core.settings.fxAntennaShape = core.pick(antShapePref, ["rod", "loop", "dish", "beam", "truck", "robot", "cat", "slime", "ghost", "reimu", "marisa", "cirno", "flandre", "youmu", "custom"], "rod");
@@ -308,8 +311,11 @@ const keepAlive = () => core.settings.fxAntenna &&
   (core.phase === "title" || core.phase === "ended" || (core.phase === "playing" && core.settings.autoPlay));
 function wakeAC() { if (typeof audioCtx !== "undefined" && window.Trk.media.audioCtx && window.Trk.media.audioCtx.state === "suspended") window.Trk.media.audioCtx.resume().catch(() => {}); }
 document.addEventListener("visibilitychange", e => {
-  if (!document.hidden || !keepAlive()) return;
+  if (!document.hidden) return;
+  const pip = window.TrkApkPip;
+  if (!keepAlive() && !(pip && pip.shouldKeepForTransition())) return;
   e.stopImmediatePropagation();
+  if (!keepAlive() && pip) pip.checkTransition();
   wakeAC();                                            // 裏ではブラウザが音の処理を止めることがあるので、再開を試みる
 }, true);
 /* 裏では画面の更新（requestAnimationFrame）が止まり、カウントダウンが進まないので省く */
@@ -837,6 +843,7 @@ addEventListener("DOMContentLoaded", () => {
     requestExternalPlayback();
   }
   function toggleAntenna(forced) {
+    if (apkNative && core.settings.backgroundPolicy === "off") core.settings.backgroundPolicy = "corner";
     if (!bgAntennaView(core.settings.backgroundPolicy).allowed) {
       core.settings.fxAntenna = false; core.saveUserPrefs(); lcdFlash(tr("dockBackgroundOff")); render(); return;
     }
@@ -977,7 +984,7 @@ addEventListener("DOMContentLoaded", () => {
     powLed.classList.toggle("on", !core.video.muted);
     antLed.classList.toggle("on", core.settings.fxAntenna);
     ant.classList.toggle("on", core.settings.fxAntenna);
-    const bgView = bgAntennaView(core.settings.backgroundPolicy);   /* off / antenna（ドック）/ corner（右上） */
+    const bgView = bgAntennaView(apkNative ? "corner" : core.settings.backgroundPolicy);   /* Android always exposes the corner switch */
     if (castSel) castSel.value = core.settings.castPolicy || "off";
     if (backgroundSel) backgroundSel.value = core.settings.backgroundPolicy || "off";
     ant.hidden = !bgView.dock; antWrap.hidden = !bgView.dock;

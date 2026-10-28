@@ -2075,7 +2075,6 @@ if (!read("js/library.js").includes("plAuthorMenu") ||
 {
   const mmd = read("js/mmd.js");
   const core = read("js/core.js");
-  const preset = JSON.parse(read("assets/mmd/lat-miku/preset.json"));
   const labelKeys = [
     "mmdMotionWalk", "mmdMotionRun", "mmdMotionSit", "mmdMotionDance", "mmdMotionLegacy",
     "mmdGroupDaily", "mmdGroupDance", "mmdGroupSongs", "mmdGroupMiku", "mmdGroupFaces", "mmdGroupVoice",
@@ -2088,8 +2087,7 @@ if (!read("js/library.js").includes("plAuthorMenu") ||
     "mmdMotionSongMic", "mmdMotionSongLong", "mmdMotionSongUp", "mmdMotionSongHum", "mmdMotionSongWhisper", "mmdMotionSongCall"
   ];
   const labelsOk = labelKeys.every(key => (mmd.match(new RegExp("\\b" + key + ":", "g")) || []).length === 4);
-  const defaultOk = preset.motion === "faceSing" && preset.bpm === 0 &&
-    core.includes('prefs.mmdMotionKind : "faceSing"') && core.includes('settings.mmdMotionKind = "faceSing"');
+  const defaultOk = core.includes('prefs.mmdMotionKind : "faceSing"') && core.includes('settings.mmdMotionKind = "faceSing"');
   const chooserOk = mmd.includes('const MOTION_GROUPS = [') && mmd.includes('const MOTION_MENU_IDS = MOTION_GROUPS.flatMap(group => group.ids)') &&
     mmd.includes("const MOTION_MENU_SET = new Set(MOTION_MENU_IDS)") && mmd.includes('visibleMotions: () => MOTION_MENU_IDS.slice()') &&
     mmd.includes('motionGroups: () => MOTION_GROUPS.map') && mmd.includes("for (const group of MOTION_GROUPS)") &&

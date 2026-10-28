@@ -24,14 +24,23 @@ test("real trk scripts build effects and keep the player open during navigation"
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   let dom;
   const failures = [], vc = new VirtualConsole();
+  let nativeBack, registrations = 0;
   vc.on("jsdomError", error => failures.push(error.message));
   try {
     dom = await JSDOM.fromURL(`http://127.0.0.1:${server.address().port}/`, {
       resources:"usable", runScripts:"dangerously", pretendToBeVisual:true, virtualConsole:vc,
       beforeParse(w) {
         w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder;
+        w.Capacitor = { isNativePlatform:() => true, Plugins:{ App:{ addListener(name, callback) { if (name === "backButton") nativeBack = callback; return Promise.resolve({remove(){}}); }, exitApp() { return Promise.resolve(); } }, TrkDevice:{setPipEligible:async ({enabled}) => ({available:true,eligible:enabled}), setOrientationLock:async ({locked}) => ({locked})} } };
+        Object.defineProperty(w.navigator, "serviceWorker", { value:{ register() { registrations++; return Promise.resolve(); }, getRegistrations:async () => [] } });
         w.matchMedia = () => ({ matches:false, addListener(){}, removeListener(){}, addEventListener(){}, removeEventListener(){} });
-        w.fetch = async () => ({ ok:false, status:404, json:async () => ({}), text:async () => "" });
+        w.fetch = async url => {
+          if (String(url).endsWith("assets/mmd/lat-miku/preset.json")) {
+            const manifest = JSON.parse(fs.readFileSync(path.join(root, "assets/mmd/lat-miku/preset.json"), "utf8"));
+            return {ok:true, status:200, json:async () => manifest};
+          }
+          return { ok:false, status:404, json:async () => ({}), text:async () => "" };
+        };
         const gradient = { addColorStop(){} };
         const ctx = new Proxy({ canvas:null, measureText:t => ({ width:String(t).length * 9 }), createLinearGradient:() => gradient, createRadialGradient:() => gradient, createPattern:() => null }, {
           get:(obj, prop) => prop in obj ? obj[prop] : () => {}, set:(obj, prop, val) => { obj[prop] = val; return true; }
@@ -47,6 +56,24 @@ test("real trk scripts build effects and keep the player open during navigation"
     const d = w.document;
     assert.equal(d.querySelectorAll(".apk-nav button").length, 5);
     assert.ok(w.TrkFX && w.TrkTV && w.TrkMediaPlayer);
+    const modelRow = d.getElementById("mmdPresetRow");
+    assert.equal(modelRow.hidden, false, "the model guide appears");
+    assert.equal(modelRow.querySelectorAll("button").length, 0, "there is no bundled model button");
+    assert.equal(modelRow.querySelector("a").href, "https://bowlroll.net/file/30199");
+    assert.equal(registrations, 0, "native startup must not register a service worker");
+    assert.equal(typeof nativeBack, "function", "native App backButton listener is installed");
+    assert.ok(d.getElementById("apkAutoPip"), `PiP control missing; jsdom errors: ${failures.join("; ")}; options: ${!!d.querySelector(".mediaOptions")}; parent: ${d.querySelector(".mediaOptions")?.closest("[id]")?.id}; inner: ${d.querySelector(".mediaOptions")?.innerHTML.slice(0,140)}; pip: ${!!w.TrkApkPip}; scripts: ${[...d.scripts].slice(-5).map(x=>x.src).join(",")}`);
+    assert.equal(d.getElementById("apkAutoPip").checked, false);
+    assert.equal(d.getElementById("apkPipAudio").disabled, true);
+    assert.equal(d.querySelector(".cornerAnt").hidden, false);
+    assert.equal(d.getElementById("floatingSafeBtn").getAttribute("aria-pressed"), "false");
+    assert.equal(d.getElementById("welcomeBox").hidden, false);
+    assert.equal(d.getElementById("floatingSafeBtn").hidden, true);
+    assert.equal(d.querySelector(".apk-nav").hidden, true, "welcome blocks the navigation");
+    nativeBack(); await Promise.resolve();
+    assert.equal(d.getElementById("welcomeBox").hidden, true);
+    assert.equal(d.getElementById("floatingSafeBtn").hidden, false);
+    assert.equal(d.querySelector(".apk-nav").hidden, false);
     // On a fresh install all settings sections are closed (preset categories
     // inside the effect grid are not settings sections).
     const sections = [...d.querySelectorAll("#settingsScreen details")].filter(node => !node.closest(".fxGrid"));
@@ -142,6 +169,9 @@ test("real trk scripts build effects and keep the player open during navigation"
     d.querySelector('[data-destination="effects"]').click();
     assert.equal(w.TrkMediaPlayer.isOpen(), true);
     assert.ok(d.querySelector("#apkEffects .mediaStage"));
+    nativeBack();
+    assert.ok(d.querySelector(".mediaBody .mediaStage"), "native back from effects keeps player open");
+    assert.equal(w.TrkMediaPlayer.isOpen(), true);
     d.querySelector('[data-destination="player"]').click();
     assert.ok(d.querySelector(".mediaBody .mediaStage"));
     assert.deepEqual(failures, []);

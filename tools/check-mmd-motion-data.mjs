@@ -3,7 +3,8 @@
 /**
  * Dependency-free smoke checks for the procedural MMD motion definitions.
  * Evaluates the pure VMD/SJIS/motion-data block from js/mmd.js and inspects
- * the bundled Lat-style PMD's bone/morph names. This is not device rendering.
+ * a recorded name-only fixture from Lat-style PMD. This is not device rendering
+ * or a check of current third-party model versions.
  */
 import fs from "node:fs";
 import { restoreCoreAlias, sourceOf } from "./lib/js-source.mjs";
@@ -47,47 +48,13 @@ if (new Set(groupedIds).size !== expectedMotionCount || ids.some(id => !data.MOT
 for (const id of [...required, ...retained]) if (!data.BUILTIN[id]) fail(`Required/retained motion is missing: ${id}`);
 for (const id of required) if (!data.MOTION_MENU_SET.has(id)) fail(`Required motion is not in the chooser: ${id}`);
 
-function parsePmd(pmdPath) {
-  const bytes = fs.readFileSync(pmdPath);
-  if (bytes.subarray(0, 3).toString("ascii") !== "Pmd") fail("Bundled Lat-style model is not a PMD file");
-  let at = 283;
-  const need = n => { if (at + n > bytes.length) fail("Truncated bundled PMD while reading morph metadata"); };
-  const readU16 = () => { need(2); const n = bytes.readUInt16LE(at); at += 2; return n; };
-  const readU32 = () => { need(4); const n = bytes.readUInt32LE(at); at += 4; return n; };
-  const readText = length => {
-    need(length);
-    const field = bytes.subarray(at, at + length); at += length;
-    const zero = field.indexOf(0);
-    return decoder.decode(zero < 0 ? field : field.subarray(0, zero));
-  };
-  const vertices = readU32(); at += vertices * 38; need(0);
-  const indices = readU32(); at += indices * 2; need(0);
-  const materials = readU32(); at += materials * 70; need(0);
-  const boneCount = readU16(), bones = new Set();
-  for (let i = 0; i < boneCount; i++) { bones.add(readText(20)); at += 19; need(0); }
-  const ikCount = readU16();
-  for (let i = 0; i < ikCount; i++) {
-    need(11);
-    const links = bytes.readUInt8(at + 4);
-    at += 11 + links * 2;
-    need(0);
-  }
-  const morphCount = readU16(), morphs = new Set();
-  for (let i = 0; i < morphCount; i++) {
-    const name = readText(20), count = readU32();
-    need(1); at += 1;
-    morphs.add(name);
-    at += count * 16;
-    need(0);
-  }
-  return { bones, morphs };
-}
-
-const preset = JSON.parse(fs.readFileSync(path.join(root, "assets/mmd/lat-miku/preset.json"), "utf8"));
-const latPmd = parsePmd(path.join(root, "assets/mmd/lat-miku", preset.files.find(name => name.toLowerCase().endsWith(".pmd"))));
-if (!latPmd.bones.size || !latPmd.morphs.size) fail("Could not read Lat-style PMD bone/morph metadata");
+// Names captured from Ver.2.31 before removal of the third-party model.
+// This checks motion compatibility against that snapshot, not a live PMD.
+const names = JSON.parse(fs.readFileSync(path.join(root, "tests/fixtures/mmd-lat-names.json"), "utf8"));
+const latPmd = { bones:new Set(names.bones), morphs:new Set(names.morphs) };
+if (!latPmd.bones.size || !latPmd.morphs.size) fail("Missing recorded Lat-style bone/morph name fixture");
 for (const name of data.FACE_MORPHS) {
-  if (!latPmd.morphs.has(name)) fail(`Facial morph is not present in the bundled Lat-style PMD: ${name}`);
+  if (!latPmd.morphs.has(name)) fail(`Facial morph is not present in the recorded Lat-style PMD names: ${name}`);
   if ([...name].some(ch => ch.charCodeAt(0) >= 0x80 && !data.SJIS[ch])) fail(`Unmapped CP932 character in morph name: ${name}`);
 }
 
@@ -102,7 +69,7 @@ for (const id of ids) {
     const pose = motion.pose(t);
     if (!pose || typeof pose !== "object" || !Object.keys(pose).length) fail(`Empty pose: ${id} at ${t}`);
     for (const [bone, value] of Object.entries(pose)) {
-      if (!latPmd.bones.has(bone)) fail(`Bone is not present in the bundled Lat-style PMD (${id}): ${bone}`);
+      if (!latPmd.bones.has(bone)) fail(`Bone is not present in the recorded Lat-style PMD names (${id}): ${bone}`);
       if ([...bone].some(ch => ch.charCodeAt(0) >= 0x80 && !data.SJIS[ch])) fail(`Unmapped CP932 bone name in ${id}: ${bone}`);
       if (data.sjisFix(bone, 15).length !== 15) fail(`Invalid bone-name byte length in ${id}: ${bone}`);
       for (const [field, vector] of [["rot", value.rot], ["pos", value.pos || [0, 0, 0]]]) {
@@ -224,7 +191,6 @@ for (const key of translatedKeys) {
   if (count !== 4) fail(`${key} must have four translations (found ${count})`);
 }
 const core = restoreCoreAlias(fs.readFileSync(path.join(root, "js/core.js"), "utf8"));
-if (preset.motion !== "faceSing" || preset.bpm !== 0) fail("Bundled Lat-style Miku preset must start with the BPM-free faceSing mouth loop");
 if (!core.includes('prefs.mmdMotionKind : "faceSing"') || !core.includes('settings.mmdMotionKind = "faceSing"')) {
   fail("Missing-preference and reset defaults must use faceSing");
 }
@@ -240,4 +206,4 @@ if (!source.includes("for (const group of MOTION_GROUPS)") || !source.includes("
   fail("Grouped select/quick motion lists are not wired");
 }
 
-console.log(`MMD motion smoke check passed · ${ids.length} built-ins/choices · prototype-safe lookup · ${data.FACE_MORPHS.length} Lat morph tracks · VMD/CP932/poses + walk/run swing valid`);
+console.log(`MMD motion smoke check passed · ${ids.length} built-ins/choices · prototype-safe lookup · ${data.FACE_MORPHS.length} recorded Lat morph names · VMD/CP932/poses + walk/run swing valid`);

@@ -33,7 +33,7 @@ trk/
 │  ├─ addons.js  addons/         … アドオン（あとから機能を足すしくみ・見本）
 │  ├─ main.js  speed.js          … 入力・起動・速度
 │  ├─ vrm.js                     … VRMマスコット
-│  ├─ mmd.js                     … MMDマスコット（原則持ち込み。再配布条件付きLat式を同梱）
+│  ├─ mmd.js                     … MMDマスコット（持ち込み式。Lat式は入手先を案内）
 │  ├─ favs.js                    … ⭐ お気に入りのフォルダ管理（1軍／2軍／🧊／📤元）
 │  ├─ spectrum.js                … 📊 スペクトラム（音の見える化・TVの画面に重ねられる）
 │  └─ study-room.js  study-room-utils.js  … 📚 書斎（端末内の画像・文章ビューア）

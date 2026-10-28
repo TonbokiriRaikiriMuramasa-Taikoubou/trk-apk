@@ -609,7 +609,7 @@ function resetKeysPrefs() {
   settings.padConfirm = PAD_DEFAULTS.confirm; settings.padBack = PAD_DEFAULTS.back; settings.padPause = PAD_DEFAULTS.pause;
 }
 function resetAllPrefs() {
-  try { localStorage.removeItem("trk_apk_settings_panels_v1"); } catch (_) {}
+  try { localStorage.removeItem("trk_apk_settings_panels_v1"); localStorage.removeItem("trk_apk_pip_mode_v1"); localStorage.removeItem("trk_apk_pip_audio_v1"); } catch (_) {}
   settings.packPrev = null;    // 📦 パックの退避も消す（全リセットのあとに古い値を戻さない。trk130）
   resetVideoPrefs(); resetAudioPrefs(); resetNotesPrefs(); resetLitePrefs(); resetKeysPrefs(); resetAmpPrefs();
   settings.liteSeen = false;   // 🪶 工場出荷状態では、スマホ向けの初回案内もやり直す

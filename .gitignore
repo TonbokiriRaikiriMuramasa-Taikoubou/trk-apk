@@ -40,3 +40,16 @@ Thumbs.db
 # 配布ZIPの組み立て（tools/prepare-release.mjs）の出力・Git外
 # vendor 内の dist は実行に必要なので除外しない
 /dist/
+
+# Signing credentials (including outside the Android project)
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pepk
+keystore.properties
+
+# User-supplied Lat model and textures are not distributed. Keep the guide only.
+/assets/mmd/lat-miku/*
+!/assets/mmd/lat-miku/README.md
+!/assets/mmd/lat-miku/preset.json

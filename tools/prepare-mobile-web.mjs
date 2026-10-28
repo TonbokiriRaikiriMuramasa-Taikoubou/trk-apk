@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
- * Stage the same static web app used by GitHub Pages for Capacitor.
+ * Stage the static web app for Capacitor, excluding locally added MMD models.
  * The output is ignored because it is a generated copy consumed by `cap sync`.
  */
 import fs from "node:fs";
@@ -34,7 +34,16 @@ for (const rel of files) {
 for (const rel of directories) {
   const source = path.join(root, rel);
   if (!fs.existsSync(source)) throw new Error(`Missing web directory: ${rel}`);
-  fs.cpSync(source, path.join(out, rel), { recursive: true });
+  fs.cpSync(source, path.join(out, rel), {
+    recursive: true,
+    // Only ship the guide and manifest for this model, even if someone has
+    // put personal model/texture files in their working tree.
+    filter: src => {
+      const modelDir = path.join(root, "assets", "mmd", "lat-miku");
+      if (!src.startsWith(modelDir + path.sep)) return true;
+      return ["README.md", "preset.json"].includes(path.relative(modelDir, src));
+    }
+  });
 }
 
 console.log(`Prepared ${files.length} files and ${directories.length} directories in ${path.relative(root, out)}/`);
