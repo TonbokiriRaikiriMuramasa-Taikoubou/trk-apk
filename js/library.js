@@ -4632,7 +4632,7 @@ function prevSong() {
 async function radioGo(next) {
   const audioVersion = core.audioSafety?.version();
   cancelRadio();
-  if (core.phase !== "ended" || !core.settings.radio) return;
+  if (core.audioSafety?.blocked() || core.phase !== "ended" || !core.settings.radio) return;
   window.Trk.play.toTitle();
   await selectSong(next);
   if (audioVersion === core.audioSafety?.version() && !core.audioSafety?.blocked() && core.phase === "title" && core.videoReady && core.chart.length && core.currentSong === next) window.Trk.play.startGame();

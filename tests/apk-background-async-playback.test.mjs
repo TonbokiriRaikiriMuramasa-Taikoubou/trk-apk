@@ -36,6 +36,11 @@ test("a queued repeat-one end event cannot restart playback in a disallowed back
   const x=setup(); x.core.videoReady=true; x.state.allowed=false; x.sandbox.endedMedia();
   assert.deepEqual(x.calls,[]); assert.equal(x.video.currentTime,7);
 });
+test("automatic track selection is not queued while output is blocked", async () => {
+  const x=setup(); x.core.audioSafety={version:()=>1,blocked:()=>true};
+  await x.sandbox.playSong(x.song); await x.sandbox.sessionSong(1);
+  assert.deepEqual(x.calls,[]); assert.equal(x.core.videoReady,false);
+});
 test("an old pending track load stays cancelled even after explicit output resumption", async () => {
   const x=setup(); let version=0, blocked=false;
   x.core.audioSafety={version:()=>version,blocked:()=>blocked};

@@ -753,7 +753,7 @@ function nextMediaSong(dir = 1) {
   return list[(i + dir + list.length) % list.length];
 }
 async function playSong(it, fromStart = true) {
-  if (!it || typeof selectSong !== "function") return;
+  if (!it || typeof selectSong !== "function" || core.audioSafety?.blocked()) return;
   const audioVersion = core.audioSafety?.version();
   if (sleepTrackMode || sleepChapterEnd) { sleepTrackMode = false; sleepChapterEnd = 0; renderMedia(); }  /* 💤 手で別の曲を選んだら「この曲／チャプターの終わり」スリープは解除（trk164/170） */
   if (reverseActive || reverseLoading) stopReverse(false, true);
@@ -879,6 +879,7 @@ function installMediaSessionObservers() {
   core.on("songTags", song => { if (song && core.currentSong && song.key === core.currentSong.key) updateMediaSessionMetadata(); });
 }
 async function sessionSong(dir) {
+  if (core.audioSafety?.blocked()) return;
   const audioVersion = core.audioSafety?.version();
   const pick = dir > 0 ? window.Trk.library.nextSong : window.Trk.library.prevSong;
   if (typeof pick !== "function" || typeof selectSong !== "function") return;
