@@ -37,8 +37,12 @@
     const want = wantsPip();
     render();
     if (!device || typeof device.setPipEligible !== "function") { available = eligible = false; render(); return; }
+    // Capture dimensions with eligibility: later metadata may describe a different
+    // track by the time this serialized call reaches Android. Audio uses 16:9.
+    const videoWidth = core.video && core.video.videoWidth || 0;
+    const videoHeight = core.video && core.video.videoHeight || 0;
     // Serialize updates so a slow native call cannot restore stale eligibility.
-    serial = serial.catch(() => {}).then(() => device.setPipEligible({enabled:want})).then(result => {
+    serial = serial.catch(() => {}).then(() => device.setPipEligible({enabled:want, videoWidth, videoHeight})).then(result => {
       available = !!result.available; eligible = !!result.eligible; render();
     }).catch(() => { available = eligible = false; render(); });
   }
@@ -61,7 +65,7 @@
     pipView = document.createElement("div"); pipView.id = "apkPipView"; pipView.hidden = true;
     const icon = document.createElement("img"); icon.src = "icons/icon-192.png"; icon.alt = "";
     pipTitle = document.createElement("strong"); pipView.append(icon, pipTitle); document.body.append(pipView);
-    for (const event of ["play", "pause", "ended", "loadedmetadata", "emptied"]) core.video.addEventListener(event, sync);
+    for (const event of ["play", "pause", "ended", "loadedmetadata", "resize", "emptied"]) core.video.addEventListener(event, sync);
     for (const event of ["language", "songSelected", "mediaReady", "phase"]) core.on(event, sync);
     const player = document.getElementById("mediaPlayerMode");
     new MutationObserver(sync).observe(player, {attributes:true, attributeFilter:["hidden"]});

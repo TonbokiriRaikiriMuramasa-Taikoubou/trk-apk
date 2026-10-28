@@ -4,6 +4,7 @@
 
 ## 1. 取り込み元と資料
 
+- 開発作業の承認済み範囲は [decisions/0002-development-authorization.md](decisions/0002-development-authorization.md)。同じ承認を繰り返し求めず、未承認の変更は別途判断する。
 - このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` のコミット `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基に、Capacitor 8とAndroid向けUIを追加した。Google Driveの1.1.4 ZIPとはバイト比較していない。
 - 現在のアプリIDは仮の `com.trk.agrg`、minSdk 24、target／compileSdk 36、開発版 `0.1.0-dev`。上流の配布バージョンとは別物。
 - 上流の引き継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、さらに古い履歴は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。Android版の現状はこの文書を優先する。設計は [apk-development.md](apk-development.md)、Media3・イヤホン操作は [media3-plan.md](media3-plan.md)、安全性は [SECURITY.md](SECURITY.md) と [QUALITY-CHECKS.md](QUALITY-CHECKS.md)。
@@ -22,7 +23,7 @@
 ### 再生・画中絵・操作デバイス
 
 - タイトル右上のアンテナで、裏画面の再生継続を試みる／一時停止する設定を切り替える。ゲームプレイ中は記録保護を優先する。現状はWebViewの再生で、OS・省電力・画面ロック等による中断を防げない。
-- プレイヤー内の「画中絵を常に使用する」は初期オフ。オンでは動画のみを既定とし、音楽も含める設定では曲名とアプリアイコンを表示する。ゲーム中はPiPにしない。PiP非対応・拒否・移行失敗時はアンテナの設定に戻る設計。Androidライフサイクルや各機器での動作は未検証。
+- プレイヤー内の「画中絵を常に使用する」は初期オフ。オンでは動画のみを既定とし、音楽も含める設定では曲名とアプリアイコンを表示する。動画PiPの枠は動画の幅／高さから求め、Android許容範囲に丸める。音楽や寸法不明は16:9。ゲーム中はPiPにしない。PiP非対応・拒否・移行失敗時はアンテナの設定に戻る設計。Androidライフサイクル、縦横動画表示や各機器での動作は未検証。
 - PiPの選択 `trk_apk_pip_mode_v1` と音楽表示の好み `trk_apk_pip_audio_v1` は端末ローカルに保存され、設定バックアップには含まれず、全設定リセットで削除される。
 - 「無音のまま再生を進める」は謎設定の候補として保留。MIDI／Web Audioも含めた消音と、元のミュート状態の復元を設計・検証するまでは実装しない。アンテナOFFの現行方針は一時停止。
 - Web Media Sessionには再生／一時停止と前後の曲の入口がある。重複するplay/pause命令で逆動作しないよう修正し、Activityの音量キーをメディア音量に関連づけた。**Android通知・ロック画面・イヤホン操作は未検証。** Media3の再生サービスはまだない。
@@ -55,7 +56,7 @@ cd android && ./gradlew assembleDebug
 
 ## 4. 検証状況と優先作業
 
-- `npm run check` は709件成功（37スイート）。`npm run cap:sync`、`git diff --check` も成功。`npm run check` には `tools/check-security.mjs` などの静的検査も含む。JSの単体・結合テストはjsdomやモックであり、Androidネイティブコードのコンパイル、描画、実音声、Bluetoothを検証しない。
+- `npm run check` は711件成功（37スイート）。`npm run cap:sync`、`git diff --check` も成功。`npm run check` には `tools/check-security.mjs` などの静的検査も含む。JSの単体・結合テストはjsdomやモックであり、Androidネイティブコードのコンパイル、描画、実音声、Bluetoothを検証しない。
 - 作業環境にはJDK／Android SDKがないが、GitHub Actionsの [初回成功ビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40746889673)（コミット `aa02acc`）で `npm ci`、`npm run check`、`cap:sync`、Javaを含む `assembleDebug` が成功し、debug APKが7日間の成果物として保存された。debug APKはGradleのdebug鍵で署名され、一般配布用ではない。**実機動作は未確認。** レビューでは以前の版を390×844の実ブラウザーで確認しているが、この環境ではChromiumのシステムライブラリ不足により今回の修正後のレイアウトは確認できていない。
 - [Android API 35エミュレーターのスモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40748761212)（コミット `77bdf9e`）で、初回起動・Android Backキーでの初回案内終了・JSからネイティブ向き固定／解除のブリッジを自動検査し成功。エミュレーター上のJSクリックであり、物理タッチ・10秒長押し・音声・Bluetooth・PiP・実機動作は検査していない。実機の手順と記録欄は [ANDROID-DEVICE-CHECKS.md](ANDROID-DEVICE-CHECKS.md)。段階的な開発・採らなかった案は [decisions/0001-android-milestones.md](decisions/0001-android-milestones.md)。
 - 優先：SDK／JDK環境でクリーンビルドし、Android実機で取り込み・再接続、再生／FX／ゲーム、書斎、戻る、向き固定、PiP、アンテナ、端末ロックと出力切替を確認。特にPiP遷移・停止・外部ピッカー・字幕・画面向きの競合を評価する。

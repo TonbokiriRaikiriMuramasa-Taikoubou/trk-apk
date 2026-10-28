@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.pm.ActivityInfo;
 import android.os.SystemClock;
+import android.util.Rational;
 import android.view.KeyEvent;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -46,6 +47,18 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void pictureInPictureRatioUsesVideoAndAndroidLimits() {
+        assertEquals(new Rational(9, 16), MainActivity.pipRatio(1080, 1920));
+        assertEquals(new Rational(16, 9), MainActivity.pipRatio(1920, 1080));
+        assertEquals(new Rational(100, 239), MainActivity.pipRatio(1, Integer.MAX_VALUE));
+        assertEquals(new Rational(239, 100), MainActivity.pipRatio(Integer.MAX_VALUE, 1));
+        assertEquals(new Rational(100, 239), MainActivity.pipRatio(100, 239));
+        assertEquals(new Rational(239, 100), MainActivity.pipRatio(239, 100));
+        assertEquals(new Rational(16, 9), MainActivity.pipRatio(0, 0));
+        assertEquals(new Rational(16, 9), MainActivity.pipRatio(-1, 200));
+    }
+
+    @Test
     public void freshStartupBackAndNativeOrientationBridge() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && window.Trk && window.Trk.core && document.querySelectorAll('.apk-nav button').length === 5 && document.getElementById('welcomeBox') && !document.getElementById('welcomeBox').hidden");
@@ -61,6 +74,11 @@ public class AndroidWebViewSmokeTest {
             evaluate(scenario, "document.getElementById('floatingSafeBtn').click()");
             eventually(scenario, "document.getElementById('floatingSafeBtn').getAttribute('aria-pressed') === 'false'");
             scenario.onActivity(activity -> assertEquals(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, activity.getRequestedOrientation()));
+            // Exercise dimensions through the real Capacitor plugin. No PiP transition
+            // or physical video rendering is claimed by this assertion.
+            evaluate(scenario, "window._testPip = 'pending'; Capacitor.Plugins.TrkDevice.setPipEligible({enabled:false, videoWidth:1080, videoHeight:1920}).then(() => window._testPip = 'done').catch(() => window._testPip = 'error')");
+            eventually(scenario, "window._testPip === 'done'");
+            scenario.onActivity(activity -> assertEquals(new Rational(9, 16), activity.getPipAspectRatio()));
         }
     }
 }

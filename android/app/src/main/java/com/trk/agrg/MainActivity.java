@@ -14,6 +14,7 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private boolean pipEligible = false;
+    private Rational pipAspectRatio = new Rational(16, 9);
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -31,12 +32,21 @@ public class MainActivity extends BridgeActivity {
             Process.myUid(), getPackageName()) == AppOpsManager.MODE_ALLOWED;
     }
 
-    void configurePip(boolean eligible) {
+    // Android PiP permits ratios from 1:2.39 to 2.39:1, inclusive.
+    static Rational pipRatio(int width, int height) {
+        if (width <= 0 || height <= 0) return new Rational(16, 9);
+        if ((long) width * 239 < (long) height * 100) return new Rational(100, 239);
+        if ((long) width * 100 > (long) height * 239) return new Rational(239, 100);
+        return new Rational(width, height);
+    }
+
+    void configurePip(boolean eligible, int videoWidth, int videoHeight) {
+        pipAspectRatio = pipRatio(videoWidth, videoHeight);
         pipEligible = eligible && canUsePip();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
                 PictureInPictureParams params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(new Rational(16, 9)).setAutoEnterEnabled(pipEligible).build();
+                    .setAspectRatio(pipAspectRatio).setAutoEnterEnabled(pipEligible).build();
                 setPictureInPictureParams(params);
             } catch (IllegalStateException | IllegalArgumentException | SecurityException ignored) {
                 pipEligible = false;
@@ -46,12 +56,14 @@ public class MainActivity extends BridgeActivity {
 
     boolean isPipEligible() { return pipEligible; }
 
+    Rational getPipAspectRatio() { return pipAspectRatio; }
+
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Build.VERSION.SDK_INT < Build.VERSION_CODES.S && pipEligible && canUsePip()) {
             try {
-                enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build());
+                enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(pipAspectRatio).build());
             } catch (IllegalStateException | IllegalArgumentException | SecurityException ignored) { }
         }
     }

@@ -19,4 +19,4 @@
 
 ## 後で決めること
 
-作業ブランチでのGitHub Actionsによるdebugビルドは利用者の了承を得た。プロセス終了後の自動再開、配布先（GitHub／Play等）、正式appId、東方なしビルドの要否は決定後に記録する。Google PlayでFGSを使う場合は申告要件も確認する。
+開発作業・作業ブランチでのGitHub Actionsによるdebugビルドの承認範囲は [0002-development-authorization.md](0002-development-authorization.md) に記録。プロセス終了後の自動再開、配布先（GitHub／Play等）、正式appId、東方なしビルドの要否は決定後に記録する。Google PlayでFGSを使う場合は申告要件も確認する。
