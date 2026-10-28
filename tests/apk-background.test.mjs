@@ -79,6 +79,63 @@ test("PiP denial falls back to pause when the antenna is off", async () => {
   x.w.TrkApkPip.checkTransition(); timer(); assert.ok(x.calls.includes("pause"));
   x.w.close();
 });
+test("a previous PiP transition timer cannot pause a later transition", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  let hidden=true, next=0;
+  const scheduled=new Map(), cancelled=[];
+  Object.defineProperty(x.d, "hidden", {get:() => hidden, configurable:true});
+  x.w.setTimeout = (fn, ms) => { assert.equal(ms,1500); scheduled.set(++next,fn); return next; };
+  x.w.clearTimeout = id => { cancelled.push(id); };
+  x.w.TrkApkPip.checkTransition();
+  hidden=false; x.d.dispatchEvent(new x.w.Event("visibilitychange"));
+  hidden=true; x.w.TrkApkPip.checkTransition();
+  assert.ok(cancelled.includes(1), "returning to foreground cancels the old timeout");
+  scheduled.get(1)(); // A queued stale callback must also be harmless.
+  assert.equal(x.calls.includes("pause"),false);
+  scheduled.get(2)(); assert.equal(x.calls.includes("pause"),true, "current failed transition pauses");
+  x.w.close();
+});
+
+test("PiP entry invalidates the timeout even after a rapid restore and re-entry", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  let hidden=true, next=0; const scheduled=new Map();
+  Object.defineProperty(x.d, "hidden", {get:() => hidden, configurable:true});
+  x.w.setTimeout = fn => {scheduled.set(++next,fn); return next;};
+  x.w.clearTimeout = () => {};
+  x.w.TrkApkPip.checkTransition();
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  hidden=false; x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  hidden=true; x.w.TrkApkPip.checkTransition();
+  scheduled.get(1)(); assert.equal(x.calls.includes("pause"),false);
+  scheduled.get(2)(); assert.equal(x.calls.includes("pause"),true);
+  x.w.close();
+});
+
+test("antenna ON and successful PiP entry avoid the fallback pause", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  Object.defineProperty(x.d, "hidden", {value:true, configurable:true});
+  let timer; x.w.setTimeout = fn => {timer=fn; return 1;}; x.w.clearTimeout = () => {};
+  x.w.TrkApkPip.checkTransition(); x.core.settings.fxAntenna=true; timer();
+  assert.equal(x.calls.includes("pause"),false, "antenna enables background attempt");
+  x.core.settings.fxAntenna=false; x.w.TrkApkPip.checkTransition();
+  const queued=timer;
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  queued(); assert.equal(x.calls.includes("pause"),false, "active PiP must not be paused by old fallback");
+  x.w.close();
+});
+
+test("an inactive PiP callback does not interrupt antenna background playback", async () => {
+  const x=setup({trk_apk_pip_mode_v1:"video"}); await tick();
+  x.core.settings.fxAntenna=true;
+  Object.defineProperty(x.d, "hidden", {value:true, configurable:true});
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.calls.includes("pause"),false, "no PiP session was dismissed");
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:true}));
+  x.w.dispatchEvent(new x.w.CustomEvent("trkApkPipChanged",{detail:false}));
+  assert.equal(x.calls.filter(call => call === "pause").length,1, "dismissing an active PiP still pauses");
+  x.w.close();
+});
+
 test("unsupported or blocked PiP is not treated as an active background mode", async () => {
   const x=setup(); await tick();
   x.w.Capacitor.Plugins.TrkDevice.setPipEligible = async () => ({available:false,eligible:false});

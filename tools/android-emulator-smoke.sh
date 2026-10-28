@@ -7,10 +7,14 @@ adb shell getprop ro.build.version.sdk
 adb shell dumpsys webviewupdate | head -30 || true
 cd android || exit 1
 # Scope to the app; generated Cordova plugin modules are not our test target.
+echo '::notice::Running app instrumentation on the disposable emulator'
 ./gradlew --no-daemon :app:connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
 status=${PIPESTATUS[0]}
 if (( status != 0 )); then
-  tail -n 35 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
+  tail -n 80 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
+  # A crashing instrumentation process may not leave JUnit results. The
+  # disposable emulator's filtered logcat helps diagnose that case.
+  adb logcat -d -t 1500 -s AndroidRuntime:E ActivityManager:W ActivityTaskManager:W TestRunner:I '*:S' | tail -n 120 | sed 's/^/::error::/' || true
   # Publish concise JUnit failures as check annotations, not just a report file.
   python3 - <<'PY'
 import glob, xml.etree.ElementTree as ET
@@ -25,5 +29,38 @@ for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml'
             msg = msg.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
             print('::error::' + msg[:900])
 PY
+else
+  # A green Gradle exit is not enough if no instrumentation tests were run.
+  python3 - <<'PY'
+import glob, sys, xml.etree.ElementTree as ET
+expected = {'freshStartupBackAndNativeOrientationBridge',
+            'pictureInPictureRatioUsesVideoAndAndroidLimits',
+            'nativePictureInPictureEntryNotifiesWebView'}
+found = {}
+for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml', recursive=True):
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError:
+        continue
+    for case in root.iter('testcase'):
+        if case.get('classname') == 'com.trk.agrg.AndroidWebViewSmokeTest' and case.get('name') in expected:
+            found[case.get('name')] = case
+missing = expected - found.keys()
+if missing:
+    print('::error::Expected Android smoke test results are missing: ' + ', '.join(sorted(missing)))
+    sys.exit(1)
+for name, case in found.items():
+    if case.find('failure') is not None or case.find('error') is not None:
+        print('::error::Smoke test failed: ' + name)
+        sys.exit(1)
+    if case.find('skipped') is not None:
+        if name != 'nativePictureInPictureEntryNotifiesWebView':
+            print('::error::Required smoke test was skipped: ' + name)
+            sys.exit(1)
+        print('::warning::PiP entry test skipped: PiP unsupported or disabled')
+    else:
+        print('::notice::Smoke test passed: ' + name)
+PY
+  status=$?
 fi
 exit "$status"

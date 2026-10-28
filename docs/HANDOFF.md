@@ -24,6 +24,7 @@
 
 - タイトル右上のアンテナOFFは裏画面で一時停止、ONは継続を試みる。WebView再生にはOS・省電力・ロック等による中断の可能性があり、継続を保証できない。ゲーム中は記録保護を優先。
 - プレイヤー内の自動画中絵は初期OFF。ON時は動画のみが既定で、音楽も含める選択肢あり。ゲーム中は対象外。動画の枠比率は動画寸法をAndroidの範囲に丸め、音楽・寸法不明は16:9。専用のPiP再生／停止ボタンは未実装。PiP移行や動画表示は実機未検証。
+- PiP移行の1.5秒フォールバックは、前景復帰・PiP開始・次の移行で古いタイマーを無効化する。未稼働時の重複したPiP終了通知はアンテナONの背景再生を停止しない。PiPが稼働中から終了し、その時点で非表示なら停止する。OSの通知順序は実機未確認。
 - PiP設定 `trk_apk_pip_mode_v1`／`trk_apk_pip_audio_v1` は端末内に保存し、設定バックアップには含まれず全設定リセットで削除。
 - Media3、ネイティブMediaSessionService、Audio Focus統合は**未実装**。Web Media Sessionのplay/pauseを冪等化し、Activity表示中の音量キーを `STREAM_MUSIC` に関連付けたが、通知・ロック画面・Bluetoothは未検証。Shokz OpenRun Pro 2の音量＋／－と多機能ボタン1／2／3回は対応目標。
 - 無音のまま再生を進める「謎設定」は保留。MIDI／Web Audioを含む消音と元の状態の復帰を設計・検証してから判断する。
@@ -53,17 +54,18 @@ cd android && ./gradlew assembleDebug
 
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
-- `npm run check`：**711件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
-- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40751690423)：`9c53d5c` でJavaを含め成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
+- `npm run check`：**715件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40756677164)：今回のPiP修正を含む `d132f2b` で成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
+- [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 
 ## 4. 次の作業と未決事項
 
-1. **M1 実機スモーク**：取り込み・再接続、再生／FX、5ゲームモード、書斎、戻る、向き・緊急復帰、アンテナ、PiP、ロックと音声出力を確認し、問題を記録。M1は未完了。
-2. **M2 安定化**：実機で見つかった不具合・遅延やタップ校正を実測して対応。未知のモーダルで任意のボタンを押すBack処理は、削除や承認の誤発火を防ぐため保留。
-3. **M3 Media3・イヤホン**：既存WebViewのFX・解析・譜面同期を保つ橋渡し案を優先して検討。WebViewが停止すれば橋渡しだけでは継続できない。必要な場合のみFXなし聴取専用ExoPlayerを検討。詳細・ライセンス・Shokz試験は [media3-plan.md](media3-plan.md)。
+1. **M1 実機スモーク（優先）**：まずアンテナON／OFFとPiPの組合せ、ホーム移動・素早い復帰と再移動、PiPからの復帰／終了を[チェック表](ANDROID-DEVICE-CHECKS.md)に沿って確認。取り込み・再接続、再生／FX、5ゲームモード、書斎、戻る、向き・緊急復帰、ロックと音声出力も順次記録する。M1は未完了。
+2. **M2 安定化**：実機がない間も再現可能な回帰テストやエミュレーター検査を追加し、上記CI失敗の再発を観察する。実機で見つかった不具合・遅延やタップ校正は実測して対応。未知のモーダルで任意のボタンを押すBack処理は、削除や承認の誤発火を防ぐため保留。
+3. **M3 Media3・イヤホン**：実機検証と並行して既存WebViewのFX・解析・譜面同期を保つ橋渡し案を具体化し、再生状態・キュー・操作の同期、Audio Focusやライフサイクルを整理する。WebViewが停止すれば橋渡しだけでは継続できない。必要な場合のみFXなし聴取専用ExoPlayerを検討。詳細・ライセンス・Shokz試験は [media3-plan.md](media3-plan.md)。
 4. **M4 取り込み**：SAFと共有インテント、永続URI、動画の範囲アクセスとシーク、権限喪失時の再接続を設計・検証。
 5. **M5 配布**：署名鍵の管理、GPL対応ソース、各素材・依存物の条件、配布先を確認。正式appId、ゲーム画面の向き、東方なしビルド、プロセス終了後の自動再開、同梱docs削減は未決。
 
