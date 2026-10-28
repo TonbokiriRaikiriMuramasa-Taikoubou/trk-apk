@@ -11,6 +11,7 @@ import android.content.pm.ActivityInfo;
 import android.os.SystemClock;
 import android.util.Rational;
 import android.view.KeyEvent;
+import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SdkSuppress;
@@ -95,6 +96,11 @@ public class AndroidWebViewSmokeTest {
                     SystemClock.sleep(100);
                 } while (SystemClock.elapsedRealtime() < end);
                 assertTrue("Native recovery screen did not appear", visible.get());
+                if (attempt == 0) {
+                    // Background and foreground must not dispatch into the dead Bridge.
+                    scenario.moveToState(Lifecycle.State.CREATED);
+                    scenario.moveToState(Lifecycle.State.RESUMED);
+                }
                 scenario.onActivity(activity -> {
                     assertEquals("Destroyed Bridge must no longer be used", null, activity.getBridge());
                     assertTrue("Recovery guard must persist", activity.recoveryGuardEnabled());
@@ -112,6 +118,12 @@ public class AndroidWebViewSmokeTest {
                 eventually(scenario, "localStorage.getItem('trk_renderer_smoke') === 'retained'");
                 evaluate(scenario, "window._recoveryPlay='pending'; Trk.core.video.play().then(() => window._recoveryPlay='played', e => window._recoveryPlay=e.name)");
                 eventually(scenario, "window._recoveryPlay === 'AbortError'");
+                if (attempt == 0) {
+                    // A later Activity recreation must retain the native guard.
+                    scenario.recreate();
+                    eventually(scenario, "document.readyState === 'complete' && !!window.Trk && !!Trk.core.audioSafety && Trk.core.audioSafety.blocked()");
+                    eventually(scenario, "localStorage.getItem('trk_renderer_smoke') === 'retained'");
+                }
             }
             // Simulate the explicit play acknowledgement, then clear only our fixture.
             evaluate(scenario, "Trk.core.audioSafety.resume(); localStorage.removeItem('trk_renderer_smoke')");
