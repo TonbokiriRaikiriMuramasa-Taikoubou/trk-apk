@@ -93,7 +93,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
       core.settings.synthModeDisabled=false; core.settings.synthModeFastStart=true;
       const sources=[];
       const param=()=>({value:1,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},cancelScheduledValues(){},cancelAndHoldAtTime(){},setTargetAtTime(){}});
-      const node=()=>({connect(){},disconnect(){},gain:param(),frequency:param(),Q:param()});
+      const node=()=>({connect(destination){return destination;},disconnect(){},gain:param(),frequency:param(),Q:param()});
       const ac={currentTime:5,state:"running",destination:{},createGain:node,createBiquadFilter:node,
         createDynamicsCompressor:()=>({...node(),threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()}),
         createAnalyser:()=>({...node(),frequencyBinCount:32,getByteFrequencyData(){}}),
@@ -109,8 +109,17 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
       pointer("pointerdown",1); pointer("pointerup",1); pointer("pointerdown",2);
       assert.equal(sources.length,2,"one release tail and one held voice exist");
       assert.equal(sources.some(s=>s.disconnected),false);
+      d.querySelector('[data-i18n="owStart"]').click();
+      assert.equal(sources.length,22,"latency calibration schedules 20 future clicks");
       paused=false; assert.equal(typeof noisyCallback,"function"); noisyCallback();
-      assert.ok(sources.every(s=>s.disconnected),"output event immediately disconnects held and released synth voices");
+      assert.ok(sources.slice(0,2).every(s=>s.disconnected),"output event immediately disconnects held and released synth voices");
+      assert.ok(sources.slice(2).every(s=>s.disconnected),"output event cancels future calibration clicks");
+      assert.equal(d.querySelector('[data-i18n="owApply"]').hidden,true);
+      d.querySelector('[data-i18n="owStart"]').click();
+      assert.equal(sources.length,42,"a deliberate new calibration remains possible");
+      sources.slice(2,22).forEach(s=>s.onended?.());
+      assert.ok(sources.slice(22).every(s=>!s.disconnected),"old cleanup leaves new clicks intact");
+      noisyCallback(); assert.ok(sources.slice(22).every(s=>s.disconnected));
       assert.equal(core.audioSafety.blocked(),true); assert.equal(paused,true);
       await assert.rejects(core.video.play(),error=>error.name==="AbortError");
       core.audioSafety.resume(); assert.equal(core.audioSafety.blocked(),false);
