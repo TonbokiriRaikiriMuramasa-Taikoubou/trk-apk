@@ -79,6 +79,54 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    @SdkSuppress(minSdkVersion = 26)
+    public void rendererCrashShowsRecoveryAndRetryStartsGuarded() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.Trk.core.audioSafety");
+            evaluate(scenario, "localStorage.setItem('trk_renderer_smoke', 'retained')");
+            for (int attempt = 0; attempt < 2; attempt++) {
+                // Only on this disposable emulator: genuinely kill the WebView renderer.
+                scenario.onActivity(activity -> activity.getBridge().getWebView().loadUrl("chrome://crash"));
+                long end = SystemClock.elapsedRealtime() + 30000;
+                AtomicReference<Boolean> visible = new AtomicReference<>(false);
+                do {
+                    scenario.onActivity(activity -> visible.set(activity.isRendererRecoveryVisible()));
+                    if (visible.get()) break;
+                    SystemClock.sleep(100);
+                } while (SystemClock.elapsedRealtime() < end);
+                assertTrue("Native recovery screen did not appear", visible.get());
+                scenario.onActivity(activity -> {
+                    assertEquals("Destroyed Bridge must no longer be used", null, activity.getBridge());
+                    assertTrue("Recovery guard must persist", activity.recoveryGuardEnabled());
+                    activity.retryRendererRecovery();
+                });
+                AtomicReference<Boolean> restarted = new AtomicReference<>(false);
+                end = SystemClock.elapsedRealtime() + 30000;
+                do {
+                    scenario.onActivity(activity -> restarted.set(activity.getBridge() != null && !activity.isRendererRecoveryVisible()));
+                    if (restarted.get()) break;
+                    SystemClock.sleep(100);
+                } while (SystemClock.elapsedRealtime() < end);
+                assertTrue("Activity did not restart", restarted.get());
+                eventually(scenario, "document.readyState === 'complete' && !!window.Trk && !!Trk.core.audioSafety && Trk.core.audioSafety.blocked()");
+                eventually(scenario, "localStorage.getItem('trk_renderer_smoke') === 'retained'");
+                evaluate(scenario, "window._recoveryPlay='pending'; Trk.core.video.play().then(() => window._recoveryPlay='played', e => window._recoveryPlay=e.name)");
+                eventually(scenario, "window._recoveryPlay === 'AbortError'");
+            }
+            // Simulate the explicit play acknowledgement, then clear only our fixture.
+            evaluate(scenario, "Trk.core.audioSafety.resume(); localStorage.removeItem('trk_renderer_smoke')");
+            long end = SystemClock.elapsedRealtime() + 10000;
+            AtomicReference<Boolean> guard = new AtomicReference<>(true);
+            do {
+                scenario.onActivity(activity -> guard.set(activity.recoveryGuardEnabled()));
+                if (!guard.get()) break;
+                SystemClock.sleep(100);
+            } while (SystemClock.elapsedRealtime() < end);
+            assertTrue("Explicit acknowledgement did not clear native guard", !guard.get());
+        }
+    }
+
+    @Test
     public void simulatedNoisyCallbackReachesWebViewAndBlocksRestart() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && !!window.Trk.core.audioSafety");

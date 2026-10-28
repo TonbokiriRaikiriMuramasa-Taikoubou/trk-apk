@@ -49,6 +49,12 @@ public class TrkDevicePlugin extends Plugin {
     }
 
     @PluginMethod
+    public void acknowledgeRendererRecovery(PluginCall call) {
+        if (((MainActivity) getActivity()).acknowledgeRecovery()) call.resolve();
+        else call.reject("Unable to save recovery acknowledgement");
+    }
+
+    @PluginMethod
     public void setOrientationLock(PluginCall call) {
         final boolean locked = call.getBoolean("locked", false);
         getActivity().runOnUiThread(() -> {

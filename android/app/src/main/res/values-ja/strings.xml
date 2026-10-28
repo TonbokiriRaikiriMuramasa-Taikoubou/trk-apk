@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="renderer_recovery_title">画面の処理が停止しました</string>
+    <string name="renderer_recovery_message">保存済みデータを意図的に削除していませんが、保存前の作業は失われる場合があります。画面を再起動して続けられます。再生を選ぶまで曲の自動再開を抑えます。</string>
+    <string name="renderer_recovery_retry">画面を再起動</string>
+    <string name="renderer_recovery_close">アプリを閉じる</string>
+</resources>

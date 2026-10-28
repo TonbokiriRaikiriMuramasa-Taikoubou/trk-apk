@@ -6,13 +6,22 @@
   if (!core || !cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
   const device = cap.Plugins && cap.Plugins.TrkDevice, video = core.video;
   if (!device || typeof device.addListener !== "function" || !video) return;
-  let blocked = false, generation = 0;
+  // The native recovery marker is present before any other playback scripts.
+  let recoveryPending = /(?:^|[?&])trkRendererRecovery=1(?:&|$)/.test(window.location.search);
+  let blocked = recoveryPending, generation = 0;
   const rawPlay = video.play.bind(video);
   const interrupted = () => new DOMException("Audio output was interrupted", "AbortError");
   core.audioSafety = {
     blocked:() => blocked,
     version:() => generation,
-    resume:() => { blocked = false; }
+    resume:() => {
+      blocked = false;
+      if (recoveryPending && typeof device.acknowledgeRendererRecovery === "function") {
+        recoveryPending = false;
+        try { Promise.resolve(device.acknowledgeRendererRecovery()).catch(error => console.warn("Unable to save recovery acknowledgement", error)); }
+        catch (error) { console.warn("Unable to save recovery acknowledgement", error); }
+      }
+    }
   };
   // Guard automatic callers in the existing WebView code. Pause also cancels a
   // browser play request already pending; check again if that promise resolves.

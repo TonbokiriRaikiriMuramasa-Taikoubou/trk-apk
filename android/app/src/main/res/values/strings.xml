@@ -4,4 +4,8 @@
     <string name="title_activity_main">trk! — AGRG</string>
     <string name="package_name">com.trk.agrg</string>
     <string name="custom_url_scheme">com.trk.agrg</string>
+    <string name="renderer_recovery_title">Display stopped unexpectedly</string>
+    <string name="renderer_recovery_message">The display stopped. Saved data was not intentionally deleted; unsaved work may be lost. Restart the screen to continue. Automatic song playback is blocked until you choose to play.</string>
+    <string name="renderer_recovery_retry">Restart screen</string>
+    <string name="renderer_recovery_close">Close app</string>
 </resources>

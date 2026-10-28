@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../js/apk-audio-safety.js', import.meta.url),'utf8');
-function setup(native=true) {
+function setup(native=true, recovery=false) {
   const listeners={}, events={}, calls=[]; let pending;
   const video={paused:false,play(){calls.push('play');return new Promise(resolve=>{pending=resolve;});},pause(){calls.push('pause');this.paused=true;}};
   const core={video,phase:'title',emit(name){(events[name]||[]).forEach(f=>f());},on(name,fn){(events[name]??=[]).push(fn);}};
-  const device={addListener(name,fn){listeners[name]=fn;return Promise.resolve();}};
-  const window={Trk:{core,play:{pauseGame(){calls.push('gamePause');core.phase='paused';video.pause();}}},Capacitor:{isNativePlatform:()=>native,Plugins:{TrkDevice:device}}};
+  const device={addListener(name,fn){listeners[name]=fn;return Promise.resolve();},acknowledgeRendererRecovery(){calls.push('ack');return Promise.resolve();}};
+  const window={location:{search:recovery?'?trkRendererRecovery=1':''},Trk:{core,play:{pauseGame(){calls.push('gamePause');core.phase='paused';video.pause();}}},Capacitor:{isNativePlatform:()=>native,Plugins:{TrkDevice:device}}};
   const document={addEventListener(name,fn){listeners[name]=fn;}};
   vm.runInNewContext(source,{window,document,console,Promise,DOMException});
   return {window,core,video,listeners,calls,resolve:()=>pending()};
@@ -33,6 +33,12 @@ test('only a trusted playback action clears the latch; reconnection or unrelated
   x.listeners.click({isTrusted:true,target:{closest:()=>null}}); assert.equal(x.core.audioSafety.blocked(),true);
   x.listeners.click({isTrusted:true,target:{closest:selector=>selector.includes('.mediaPlayBtn') ? {} : null}});
   assert.equal(x.core.audioSafety.blocked(),false);
+});
+test('renderer recovery starts blocked before automatic playback and needs explicit acknowledgement',async()=>{
+  const x=setup(true,true); assert.equal(x.core.audioSafety.blocked(),true);
+  await assert.rejects(x.video.play(),{name:'AbortError'}); assert.deepEqual(x.calls,[]);
+  x.listeners.click({isTrusted:false,target:{closest:()=>true}}); assert.equal(x.core.audioSafety.blocked(),true);
+  x.core.audioSafety.resume(); assert.equal(x.core.audioSafety.blocked(),false); assert.deepEqual(x.calls,['ack']);
 });
 test('web does not install the Android output policy',()=>{
   const x=setup(false); assert.equal(x.core.audioSafety,undefined); assert.equal(x.listeners.audioBecomingNoisy,undefined);
