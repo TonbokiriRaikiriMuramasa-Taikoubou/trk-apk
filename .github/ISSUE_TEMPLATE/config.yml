@@ -5,8 +5,8 @@ contact_links:
     url: https://x.com/ttrk143
     about: スクリーンショットやショート動画、気軽な一言は X（@ttrk143 / #trkAGRG）へ！
   - name: 📖 開発ドキュメント（HANDOFF）
-    url: https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk/blob/main/docs/HANDOFF.md
-    about: 設計思想、ファイル構造、保存データの仕様がまとまっています。
+    url: https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/blob/main/docs/HANDOFF.md
+    about: Android版の現状、開発手順、未検証事項がまとまっています。
   - name: ✔ 曲の公認パック応募ガイド
     url: https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk/blob/main/docs/verified.md
     about: 作曲家・クリエイター様からの公認パック申し込み手順。

@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Android debug build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    name: Check and build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install dependencies
+        run: npm ci
+      - name: Check web source
+        run: npm run check
+      - name: Prepare Capacitor Android assets
+        run: npm run cap:sync
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Record checksum
+        working-directory: android/app/build/outputs/apk/debug
+        run: sha256sum app-debug.apk > SHA256SUMS.txt
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: trk-apk-debug-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7

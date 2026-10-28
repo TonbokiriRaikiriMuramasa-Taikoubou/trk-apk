@@ -13,7 +13,7 @@ function setup() {
       ${Array.from({length:5}, () => '<div><span>Band</span><input type="range" min="-12" max="12" step="0.5" value="0"><span class="mono">0 dB</span></div>').join("")}
       <button data-i18n="sfxEqReset"></button></details>
     <div id="mediaPlayerMode" hidden><section class="mediaDialog"><header class="mediaHeader"></header><div class="mediaBody"><div class="mediaDisplayTitle">Song 1</div><div class="mediaStage"></div><button class="mediaPlayBtn"></button></div></section></div>
-    <div id="studyRoom" hidden></div></body>`, { runScripts:"outside-only" });
+    <div id="studyRoom" hidden></div><button id="floatingSafeBtn" style="display:flex"></button></body>`, { runScripts:"outside-only" });
   const { window:w } = dom, { document:d } = w;
   const hooks = {}, calls = { open:0, close:0, play:0 };
   const player = new w.EventTarget(); player.paused = false;
@@ -112,6 +112,23 @@ test("external player close restores controls; study/settings/gameplay and langu
   assert.equal(d.querySelector("#apkMediaGame").textContent, "Go to game mode");
 });
 
+
+test("orientation control hides for gameplay and restores only on a clear title screen", async () => {
+  const { w, d, core, emit } = setup(), button = d.getElementById("floatingSafeBtn");
+  assert.equal(button.hidden, false);
+  for (const phase of ["playing", "paused", "ended"]) {
+    core.phase = phase; emit("phase"); assert.equal(button.hidden, true, phase);
+  }
+  const overlay = d.createElement("div"); overlay.className = "plOverlay"; d.body.append(overlay);
+  await Promise.resolve();
+  assert.equal(button.hidden, true);
+  core.phase = "title"; emit("phase"); assert.equal(button.hidden, true, "modal still blocks control");
+  overlay.remove(); await Promise.resolve(); assert.equal(button.hidden, false);
+  // The source button has inline display:flex; the APK's hidden rule must override it.
+  const css = fs.readFileSync(new URL("../css/apk-mobile.css", import.meta.url), "utf8");
+  assert.match(css, /#floatingSafeBtn\[hidden\]\s*\{\s*display\s*:\s*none\s*!important/);
+  w.close();
+});
 
 test("actual markup keeps every import action and reconnect outside the collapsed section", () => {
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");

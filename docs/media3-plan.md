@@ -16,7 +16,16 @@ Androidの[公式ガイド](https://developer.android.com/media/media3/session/b
 
 ただし、Media3を追加するだけではWebViewのIndexedDB内File／Blobをそのままネイティブプレイヤーが再生できない。現行FXはWeb Audio側で動くため、単純にExoPlayerへ切り替えるとFX・解析・MIDI・譜面や映像同期が変化し得る。バックグラウンド時に別プレイヤーへ切り替えるならURIの有効期間、権限、位置・状態、同時発音、エフェクト、失敗時の復帰が必要。可能ならSAFによる永続 `content://` URIと再生主体の一本化を設計し、非対応曲は現行方式を保護する。利用者に無断で音が二重になったり効果が消えたりしないようにする。
 
-暫定案としてMedia3の `SimpleBasePlayer` でWebViewに操作だけ中継する方法もあるが、WebView／プロセスが停止すれば再生主体は残らず、**それだけでは安定したバックグラウンド再生にならない**。Androidが生成する通知やChromiumの既存Media Sessionと競合しないこと、通知・コントローラーのアクセス制御も必要。採用方法は実機・互換性の検証後に決め、未確認のForeground Serviceを先に常駐させない。
+段階Aの候補は、WebViewを再生主体のまま維持し、Media3の `MediaSessionService` と `SimpleBasePlayer` で状態・命令をJSと中継すること。既存FX・解析・譜面同期を守りやすいが、WebView／プロセスが停止すれば再生主体は残らず、**それだけでは安定したバックグラウンド再生にならない**。WebViewのMedia SessionがBluetoothや通知に橋渡しされない端末では、現行のWeb側修正は外部操作に効かない可能性がある。実機で検証し、不足する場合に限り段階BとしてFXなしの聴取専用ExoPlayerを検討する（全面移行はしない）。切替の同時発音や状態消失は防ぐ。
+
+段階Aを実装する前に次を検証する。
+
+- mediaPlayback型foreground serviceとAndroid 14以降の `FOREGROUND_SERVICE_MEDIA_PLAYBACK` 権限、通知、Android 12以降の背景起動制限。アンテナONでアプリ前面から再生開始した時点を候補とし、開始／停止と失敗時の整合性を設計する。[Android公式の再生サービス](https://developer.android.com/media/media3/session/background-playback)。
+- メディアセッション通知の通知権限例外を確認しつつ、通知の見え方・制御はOSごとに試す。Google Play配布時はforeground service種別の申告も確認する。
+- Chromium側セッションとの競合、コントローラー認可、Activityとサービスの寿命、JS中継の未応答・状態遅延・回復時の整合性。WebView rendererの優先度設定は効果とメモリ負荷を実測し、設定だけで生存が保証されるとはみなさない。
+- アプリが終了・強制停止された後に再開するかは利用者と決定する。サービスやWebViewが失われたとき、勝手に大音量で再生を復元しない。
+
+採用方法は実機・互換性の検証後に決め、未確認のforeground serviceを先に常駐させない。
 
 ## 設計・検証の受け入れ条件
 
