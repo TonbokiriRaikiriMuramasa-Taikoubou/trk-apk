@@ -63,7 +63,8 @@ cd android && ./gradlew assembleDebug
 
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
-- `npm run check`：**776件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- `npm run check`：**809件成功、41スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- PC版1.1.5〜1.1.7の移植 `f008412` で[debug APK](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070392)・[API 35 WebView試験](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070333)成功。お気に入りの保存・再生成を確認したが、物理タッチやゲームの感触は未検証。
 - 今回の「前へ」追加を含む `1fa96b1` は[debug APK CI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364524)と[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364484)で成功。WebView上で設定の保存・復元と偽の再生位置による動作を確認したが、実音声・物理操作・Bluetoothは未検証。
 - [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318767)：FX復旧保護・Media3テスト専用モデルと計測テストを含む `4d87377` で成功。モデルと計測テストはアプリに組み込まれない。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。

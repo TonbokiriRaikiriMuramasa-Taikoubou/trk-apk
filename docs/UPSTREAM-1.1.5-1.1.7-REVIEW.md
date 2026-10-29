@@ -15,3 +15,8 @@
 - お気に入りの保存・旧設定の引き継ぎ、フォルダ移動、ピン・凍結、長押し途中の画面退避、再起動を確認する。仮想DOM／模擬は実機ではない。
 - trkの既存リストに対するPCの自動更新・移行は、APKでは利用者の編集を守るため未導入。安全な差分判定、複数Volと古いID、棚の上限・既存データを対象に設計・テストしてから判断する。
 - Media3サービス・Audio Focus・SAF・物理Bluetoothの検証は本作業の範囲外で、引き続き未実施。[HANDOFF](HANDOFF.md) と [実機チェック表](ANDROID-DEVICE-CHECKS.md) を参照。
+
+## 検証結果
+
+- `f008412` で `npm run check` 809件成功、`npm run cap:sync`・差分チェック成功。[debug APK CI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070392) 成功。成果物はActionsの保存期限とdebug署名に注意。
+- [API 35 エミュレーター](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070333) でWebView内のお気に入り2軍・ピン・凍結と譜面方式の保存、Activity再生成後の復元を確認。JS操作であり、物理タッチ・音声・ゲームプレイ・Bluetoothは検査していない。
