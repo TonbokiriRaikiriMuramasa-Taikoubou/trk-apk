@@ -68,6 +68,12 @@ Playerの状態変更リスナーからの再入と、Media3より前にFuture�
 
 最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。再検査は成功したが再発しない保証はない。失敗注釈は、通常logcatよりJUnit失敗を優先するよう改善した。
 
+### 次・前・再生の模擬メディアキー（CI実行待ち）
+
+実Media3のテスト用セッションにAndroidプラットフォームのMediaControllerから模擬 `KEYCODE_MEDIA_PREVIOUS`／`NEXT`／`PLAY_PAUSE` を送り、偽Playerへの命令と前曲の位置を調べる検査を追加した。物理キー・Bluetooth・複数クリックの翻訳、アプリのWeb側命令、OSの音量制御は対象外。CI成功まで結果は未確認。
+
+[Media3 1.11.1の `BasePlayer`](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/BasePlayer.java)では、通常の `seekToPrevious()` は位置がしきい値を超えると同じ曲の先頭へ戻し、そうでなければ前曲へ進む。trkの現行Media Sessionの `previoustrack` は `stepMedia(-1)` または `sessionSong(-1)` を呼ぶため、単純に同一視しない。[レガシーセッションの実装](https://github.com/androidx/media/blob/1.11.1/libraries/session/src/main/java/androidx/media3/session/MediaSessionLegacyStub.java)には、通常のpreviousが利用不可ならprevious-media-itemを試す分岐もあるが、利用可能コマンドを制限すると他のコントローラーでの操作性に影響し得る。採用可否・前後曲の境界・リピート／シャッフル・認可は別途検討する。
+
 ## サービス・フォーカス・検証順
 
 - フォアグラウンドサービスは起動条件、通知、権限、Androidバージョン別制限を確認し、適法に開始できない場合はエラーを示して既存再生の状態と矛盾させない。Media3の通知・セッションとChromiumとの重複を実機で調べる。通知を出しただけでWebViewが生存する保証はない。
