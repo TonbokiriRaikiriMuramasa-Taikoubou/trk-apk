@@ -68,9 +68,9 @@ Playerの状態変更リスナーからの再入と、Media3より前にFuture�
 
 最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。再検査は成功したが再発しない保証はない。失敗注釈は、通常logcatよりJUnit失敗を優先するよう改善した。
 
-### 次・前・再生の模擬メディアキー（CI実行待ち）
+### 次・前・再生の模擬メディアキー（API 35エミュレーター）
 
-実Media3のテスト用セッションにAndroidプラットフォームのMediaControllerから模擬 `KEYCODE_MEDIA_PREVIOUS`／`NEXT`／`PLAY_PAUSE` を送り、偽Playerへの命令と前曲の位置を調べる検査を追加した。物理キー・Bluetooth・複数クリックの翻訳、アプリのWeb側命令、OSの音量制御は対象外。CI成功まで結果は未確認。
+実Media3のテスト用セッションにAndroidプラットフォームのMediaControllerから模擬 `KEYCODE_MEDIA_PREVIOUS`／`NEXT`／`PLAY_PAUSE` を送り、偽Playerへの命令と前曲の位置を調べる検査を追加した。物理キー・Bluetooth・複数クリックの翻訳、アプリのWeb側命令、OSの音量制御は対象外。[API 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318738)（`4d87377`）で、模擬キーによる前・次・独立した再生／一時停止が偽Playerへ届くことを確認した。通常のpreviousを有効にすると3秒の仮しきい値を超えた位置では現在曲の先頭へ戻り、先頭付近の次のpreviousで前曲へ移った。通常previousを無効にしてprevious-media-itemを有効にした条件では、同じ位置から前曲へ移った。これは固定3曲・手動位置・同一アプリのコントローラーによる例で、実trkの選曲動作・実機・他アプリへの互換性を保証しない。最初の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40824514715)はテスト内の型名衝突によるコンパイルエラーで、名前修正後に成功した。
 
 [Media3 1.11.1の `BasePlayer`](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/BasePlayer.java)では、通常の `seekToPrevious()` は位置がしきい値を超えると同じ曲の先頭へ戻し、そうでなければ前曲へ進む。trkの現行Media Sessionの `previoustrack` は `stepMedia(-1)` または `sessionSong(-1)` を呼ぶため、単純に同一視しない。[レガシーセッションの実装](https://github.com/androidx/media/blob/1.11.1/libraries/session/src/main/java/androidx/media3/session/MediaSessionLegacyStub.java)には、通常のpreviousが利用不可ならprevious-media-itemを試す分岐もあるが、利用可能コマンドを制限すると他のコントローラーでの操作性に影響し得る。採用可否・前後曲の境界・リピート／シャッフル・認可は別途検討する。
 

@@ -62,7 +62,7 @@ cd android && ./gradlew assembleDebug
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
 - `npm run check`：**769件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
-- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119134)：FX復旧保護・Media3テスト専用モデルと計測テストを含む `20073cf` で成功。モデルと計測テストはアプリに組み込まれない。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
+- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318767)：FX復旧保護・Media3テスト専用モデルと計測テストを含む `4d87377` で成功。モデルと計測テストはアプリに組み込まれない。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
 - [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
 - [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40781914878)（`4e09306`）で `chrome://crash` によりrendererを2回終了し、その都度の復旧画面・手動再起動・テスト用localStorageの保持・再生抑止を確認。noisy通知もpluginから模擬したが、OSの実際のイヤホン切断や音声出力は再現していない。PiP中の異常終了、強制終了、実機・他OSは未検証。
@@ -72,6 +72,7 @@ cd android && ./gradlew assembleDebug
 - [Media3共有FutureのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）で、複数命令の共有保留は途中の状態表示を遅延させ、先行登録リスナーから古い再生状態を読める反例も残ることを確認。採用は未決定。途中の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)は原因未特定で、後続再検査は成功。
 - [Media3意図同期案のAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）では、pause直後に `isPlaying=false` でも偽の遠隔再生主体が再生中であり得る反例を確認。Futureを即完了するAPI契約や各状態の意味・通知との適合も未確定で、採用しない。
 - [テスト専用MediaSessionのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119109)（`20073cf`）で、偽再生主体が再生中でもMedia3側は非再生、Android側はpauseと受け取るケースを確認。通知UI・Bluetooth・実音声は未検査。[最初のCI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)は原因未特定で、再検査成功は再発しない保証ではない。
+- [模擬メディアキーのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318738)（`4d87377`）で前・次・再生／一時停止を偽Playerへ配送。通常previousは曲の途中では現曲先頭へ戻り得る一方、previous-media-itemのみを有効にした条件では前曲へ移った。既存trkの選曲や物理Bluetoothは未検証。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 
