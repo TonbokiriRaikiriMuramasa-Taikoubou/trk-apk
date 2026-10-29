@@ -69,7 +69,7 @@ cd android && ./gradlew assembleDebug
 - [API 35エミュレーター追加検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40782607596)（`bdb6807`）で復旧画面の背景→前景と、復旧後のActivity再生成時の保護も確認。この検査は後続のシンセ・測定音・ゲームSE・FX残響停止を実音声で検査していない。
 - [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40810902152)（`e45ae8e`）では、実WebViewでFX再構築の例外を注入し、模擬noisy通知後の警告表示、再生ガード、再試行と設定維持を確認した。実broadcast・物理切断・実音声・タッチではない。
 - [Media3契約のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40815605797)（`5e0702a`）で、テストAPK限定の `media3-common:1.11.1` のplaceholder、優先停止後の古い応答、複数Future取消中の同期再入を確認。再入時には古い表示を読める反例があり、方式は未確定。製品debug runtime依存グラフへのMedia3混入はない。サービス・実通信・音声・Bluetoothは試験していない。
-- [Media3共有FutureのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817265509)（`b5e5e9e`）で、複数命令の共有保留は途中の状態表示を遅延させ、先行登録リスナーから古い再生状態を読める反例も残ることを確認。採用は未決定。
+- [Media3共有FutureのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）で、複数命令の共有保留は途中の状態表示を遅延させ、先行登録リスナーから古い再生状態を読める反例も残ることを確認。採用は未決定。途中の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)は原因未特定で、後続再検査は成功。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 
