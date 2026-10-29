@@ -8,6 +8,7 @@ import static org.junit.Assume.assumeTrue;
 
 import android.app.PictureInPictureParams;
 import android.content.pm.ActivityInfo;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Rational;
 import android.view.KeyEvent;
@@ -15,15 +16,19 @@ import androidx.lifecycle.Lifecycle;
 import androidx.media3.common.Player;
 import androidx.media3.common.SimpleBasePlayer;
 import androidx.media3.common.util.UnstableApi;
-import android.os.Looper;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import java.util.Collections;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
@@ -58,6 +63,73 @@ public class AndroidWebViewSmokeTest {
         void changedActualState(boolean playing) { actualPlaying = playing; invalidateState(); }
     }
 
+    // A deliberately small projection experiment, NOT an audio or Bridge implementation.
+    // All methods and simulated replies are invoked on the player's application thread.
+    private static final class SafetyProjectionPlayer extends SimpleBasePlayer {
+        static final class Operation {
+            final long epoch;
+            final long generation;
+            final SettableFuture<Void> future = SettableFuture.create();
+            Operation(long epoch, long generation) { this.epoch = epoch; this.generation = generation; }
+        }
+        final List<Operation> pending = new ArrayList<>();
+        long epoch = 1;
+        long generation;
+        long revision = -1;
+        int issued;
+        int blockedAttempts;
+        boolean blocked;
+        boolean projectedPlaying;
+
+        SafetyProjectionPlayer(boolean initialPlaying) {
+            super(Looper.getMainLooper());
+            projectedPlaying = initialPlaying;
+        }
+        @Override protected State getState() {
+            Player.Commands.Builder commands = new Player.Commands.Builder();
+            if (!blocked) commands.add(Player.COMMAND_PLAY_PAUSE);
+            return new State.Builder()
+                .setAvailableCommands(commands.build())
+                .setPlaylist(Collections.singletonList(new MediaItemData.Builder("fixture").build()))
+                .setPlaybackState(blocked ? Player.STATE_IDLE : Player.STATE_READY)
+                .setPlayWhenReady(!blocked && projectedPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+                .build();
+        }
+        @Override protected State getPlaceholderState(State suggested) { return getState(); }
+        @Override protected ListenableFuture<?> handleSetPlayWhenReady(boolean value) {
+            // Cached available commands can still be stale while futures are being drained.
+            if (blocked) {
+                blockedAttempts++;
+                return Futures.immediateVoidFuture();
+            }
+            Operation operation = new Operation(epoch, generation);
+            pending.add(operation);
+            issued++;
+            return operation.future;
+        }
+        void interrupt() {
+            generation++;
+            blocked = true;
+            projectedPlaying = false; // Unknown/unavailable, NOT proof the remote audio stopped.
+            List<Operation> abandoned = new ArrayList<>(pending);
+            pending.clear();
+            for (Operation operation : abandoned) operation.future.cancel(false);
+            invalidateState();
+        }
+        void reconnect() { interrupt(); epoch++; revision = -1; }
+        void explicitResumeForTest() { blocked = false; invalidateState(); }
+        boolean reply(Operation operation, long replyEpoch, long replyGeneration, long replyRevision, boolean playing) {
+            if (blocked || !pending.contains(operation) || replyEpoch != epoch || replyGeneration != generation
+                    || operation.epoch != replyEpoch || operation.generation != replyGeneration
+                    || replyRevision <= revision) return false;
+            revision = replyRevision;
+            projectedPlaying = playing;
+            pending.remove(operation);
+            operation.future.set(null);
+            return true;
+        }
+    }
+
     @Test
     public void media3PendingOperationsUsePlaceholderAndDeferInvalidation() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
@@ -84,6 +156,74 @@ public class AndroidWebViewSmokeTest {
             assertTrue(!cautiousStop.isPlaying());
         });
     }
+    @Test
+    public void media3InterruptDrainsPendingButReentrantReadCanSeeStaleState() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            SafetyProjectionPlayer player = new SafetyProjectionPlayer(true);
+            player.pause();
+            player.play();
+            assertEquals(2, player.pending.size());
+            SafetyProjectionPlayer.Operation first = player.pending.get(0);
+            SafetyProjectionPlayer.Operation second = player.pending.get(1);
+            AtomicBoolean callbackRan = new AtomicBoolean(false);
+            AtomicBoolean observedStalePlaying = new AtomicBoolean(false);
+            first.future.addListener(() -> {
+                callbackRan.set(true);
+                observedStalePlaying.set(player.isPlaying());
+                // Simulate reentry during sequential cancellation: it must not issue a new command.
+                player.play();
+            }, MoreExecutors.directExecutor());
+            player.interrupt();
+            assertTrue(callbackRan.get());
+            assertTrue("An inline cancellation listener can see the old projection before all futures drain",
+                observedStalePlaying.get());
+            assertEquals("Reentry reaches the handler through stale commands", 1, player.blockedAttempts);
+            assertEquals("Blocked handler rejects reentrant play", 2, player.issued);
+            assertTrue(first.future.isCancelled());
+            assertTrue(second.future.isCancelled());
+            assertTrue(player.pending.isEmpty());
+            assertTrue(!player.isPlaying());
+            assertEquals(Player.STATE_IDLE, player.getPlaybackState());
+            assertTrue(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE));
+        });
+    }
+
+    @Test
+    public void media3InterruptedGenerationAndOldEpochCannotCompleteNewPlay() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            SafetyProjectionPlayer player = new SafetyProjectionPlayer(false);
+            player.play();
+            SafetyProjectionPlayer.Operation old = player.pending.get(0);
+            player.interrupt();
+            player.play();
+            assertEquals("Play while blocked is not issued", 1, player.issued);
+            player.explicitResumeForTest();
+            player.play();
+            SafetyProjectionPlayer.Operation current = player.pending.get(0);
+            assertTrue(!player.reply(old, old.epoch, old.generation, 999, true));
+            assertTrue("Even a reply associated with the new operation needs the current generation",
+                !player.reply(current, current.epoch, old.generation, 999, true));
+            assertTrue("Old generation cannot complete current operation", !current.future.isDone());
+            assertTrue("Non-increasing revision is rejected", !player.reply(current, current.epoch, current.generation, -1, true));
+            assertTrue(!player.isPlaying());
+            assertTrue(player.reply(current, current.epoch, current.generation, 1, true));
+            assertTrue(player.isPlaying());
+            assertTrue("Duplicate reply is ignored", !player.reply(current, current.epoch, current.generation, 2, false));
+            assertTrue(player.isPlaying());
+
+            player.reconnect();
+            player.explicitResumeForTest();
+            player.play();
+            SafetyProjectionPlayer.Operation afterReconnect = player.pending.get(0);
+            assertTrue(!player.reply(current, current.epoch, current.generation, 1000, false));
+            assertTrue("New operation cannot accept a previous connection's epoch",
+                !player.reply(afterReconnect, current.epoch, afterReconnect.generation, 1000, false));
+            assertTrue(!afterReconnect.future.isDone());
+            assertTrue(player.reply(afterReconnect, afterReconnect.epoch, afterReconnect.generation, 1, true));
+            assertTrue(player.isPlaying());
+        });
+    }
+
     private String evaluate(ActivityScenario<MainActivity> scenario, String javascript) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<String> value = new AtomicReference<>();

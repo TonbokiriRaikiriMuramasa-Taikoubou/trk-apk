@@ -49,6 +49,8 @@ expected = {'freshStartupBackAndNativeOrientationBridge',
             'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
             'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
             'media3PendingOperationsUsePlaceholderAndDeferInvalidation',
+            'media3InterruptDrainsPendingButReentrantReadCanSeeStaleState',
+            'media3InterruptedGenerationAndOldEpochCannotCompleteNewPlay',
             'pictureInPictureRatioUsesVideoAndAndroidLimits',
             'nativePictureInPictureEntryNotifiesWebView'}
 found = {}
