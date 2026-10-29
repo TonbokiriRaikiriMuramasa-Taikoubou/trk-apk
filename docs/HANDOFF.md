@@ -9,7 +9,7 @@
 - このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` の `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基にしたCapacitor 8のAndroid版。Drive上の1.1.4 ZIPとのバイト一致は未確認。
 - 仮アプリID `com.trk.agrg`、開発版 `0.1.0-dev`、minSdk 24、target／compileSdk 36。ゲーム機能・Web再生・書斎などを引き継ぐが、Androidでの動作は機能ごとに確認する。
 - **仕様の固定記録**：[APK-SPEC-2026-10-29.md](APK-SPEC-2026-10-29.md) は `9c53d5c` 時点の上流との差分と未検証・今後の方針をまとめたもの。[同一ファイルのDrive版](https://drive.google.com/file/d/1JwyQL83Hz55Qnl1vP01QSqUuWjNtoMbU/view)のSHA-256は `57dcf085bf026278fb74ab811cf08913717d9388f995ff4806dcb7aac08e7081`。以降の仕様変更は本HANDOFFと新しい記録を優先する。
-- **これから行える作業**：[優先順位付き作業一覧](NEXT-ACTIONS-2026-10-29.md)。端末なしで進める対策、実機が必要な確認、利用者の判断待ちを区別する。Media3段階Aの通信・競合・状態の[設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)を追加したが、実装はまだない。
+- **これから行える作業**：[優先順位付き作業一覧](NEXT-ACTIONS-2026-10-29.md)。端末なしで進める対策、実機が必要な確認、利用者の判断待ちを区別する。Media3段階Aの通信・競合・状態の[設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)とテスト専用の偽Bridge／偽Playerモデルと、`androidTestImplementation` 限定でMedia3 `SimpleBasePlayer` とテスト用MediaSessionの状態を調べる検査を追加した。製品アプリのMedia3サービスや実通信はまだ実装していない。
 - 詳細：[Android設計](apk-development.md)／[実機チェック表](ANDROID-DEVICE-CHECKS.md)／[Media3計画](media3-plan.md)／[Media3導入前レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)／[段階的開発の判断](decisions/0001-android-milestones.md)／[開発作業の承認範囲](decisions/0002-development-authorization.md)／[安全性](SECURITY.md)／[品質検査](QUALITY-CHECKS.md)。上流の引き継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、古い経緯は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。
 - 以前のDriveフォルダ `trk-apk-0.1.0-dev-2026-10-29` は古い開発ソースでLat式モデルを含む。後の `trk-apk-review-source-plan-2026-10-29` はPR #2時点であり、今回の変更や実機結果を含まない。いずれも自動更新していない。
 
@@ -26,10 +26,11 @@
 ### 再生・PiP
 
 - Media3導入前レビューの対応は [レビュー対応記録](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md) を参照。非表示イベントの伝播を維持して押下操作を解除し、逆再生のMedia Session状態を同期した。renderer終了時はネイティブの復旧画面を表示し、明示的な画面再起動後も再生開始操作まで自動再生を抑止する試作を追加した。OS・実機の安定性、データ保持、再生経路は未検証。イヤホン切断はAndroidのnoisy通知を受けて停止・自動再開抑止を試みる暫定対策を追加したが、音声経路・通知配送・物理端末でのスピーカー再生防止は保証できない。
-- 出力切断時のシンセは、押鍵中だけでなく離鍵済みのリリース余韻も追跡して即時切断するよう修正。通常の離鍵・画面退避のリリースは維持。モック音声ノードと実スクリプトのイベント連携を検査したが、実音声・物理出力の切替は未確認。タイミング測定の最大20個・約10秒先までの予定音も、切断時に取り消し測定を中止する。ゲームのヒットSE・カウント・失敗／CATCH音もsourceと出力を追跡し、切断時に停止・disconnect、明示再開前の自動発音を抑止する。SE試聴ボタンの実際の操作は、曲の再生ガードを解除せず新しい試聴だけを許す。FXは独立した最終出力を切断し、アドオン由来のFX経由メディアも停止。明示再開時はEQ・ゲーム連動・リミッターとプリセット／追加ミックス経路を作り直して残響を破棄し、設定を維持して出力を戻す。再構築失敗時はFXを無音側に残し、エラーをログへ出す（利用者向けの復旧UIは未実装）。偽AudioNodeでの検査のみであり、実broadcast・実音声・物理端末やすべてのアドオン音声は未検証。
+- 出力切断時のシンセは、押鍵中だけでなく離鍵済みのリリース余韻も追跡して即時切断するよう修正。通常の離鍵・画面退避のリリースは維持。モック音声ノードと実スクリプトのイベント連携を検査したが、実音声・物理出力の切替は未確認。タイミング測定の最大20個・約10秒先までの予定音も、切断時に取り消し測定を中止する。ゲームのヒットSE・カウント・失敗／CATCH音もsourceと出力を追跡し、切断時に停止・disconnect、明示再開前の自動発音を抑止する。SE試聴ボタンの実際の操作は、曲の再生ガードを解除せず新しい試聴だけを許す。FXは独立した最終出力を切断し、アドオン由来のFX経由メディアも停止。明示再開時はEQ・ゲーム連動・リミッターとプリセット／追加ミックス経路を作り直して残響を破棄し、設定を維持して出力を戻す。再構築失敗時はFXを無音側に残し、再生ガードを再設定して再生を停止。画面に再生操作での再試行と、繰り返す場合のデータ保存・アプリ再起動を案内する。成功するまで自動的に再生を始めず、エラーをログに記録する。画面表示や再試行の実機確認は未実施。偽AudioNodeでの検査のみであり、実broadcast・実音声・物理端末やすべてのアドオン音声は未検証。
 - タイトル右上のアンテナOFFは裏画面で一時停止、ONは継続を試みる。WebView再生にはOS・省電力・ロック等による中断の可能性があり、継続を保証できない。ゲーム中は記録保護を優先。
 - プレイヤー内の自動画中絵は初期OFF。ON時は動画のみが既定で、音楽も含める選択肢あり。ゲーム中は対象外。動画の枠比率は動画寸法をAndroidの範囲に丸め、音楽・寸法不明は16:9。専用のPiP再生／停止ボタンは未実装。PiP移行や動画表示は実機未検証。
 - PiP移行の1.5秒フォールバックは、前景復帰・PiP開始・次の移行で古いタイマーを無効化する。未稼働時の重複したPiP終了通知はアンテナONの背景再生を停止しない。PiPが稼働中から終了し、その時点で非表示なら停止する。OSの通知順序は実機未確認。
+- 「前へ」は既定で位置が3秒を超えたら現在曲の先頭、3秒以内なら前曲へ。❓謎設定「前へボタンは常に前曲へ移る」は既定オフで保存される。プレイヤー・バナー・TV・Web Media Sessionに適用し、ゲーム中は譜面同期を保つため既存の曲送りを維持。実機・物理イヤホンは未検証。
 - Androidで非表示・アンテナOFF・PiP非稼働の間、Web Media Sessionの再生／前後曲命令は受け付けず、停止／シークは受け付ける。読み込み途中で背景に移った場合も、対象の自動再生・プレビュー・リピートを抑止する。前景、アンテナON、実際に稼働中のPiPでは許可する。非同期の全再生経路やOSからの操作は実機未検証。
 - 逆再生中のMedia Session一時停止は通常再生へ切り替えず停止する。非同期準備中の停止・新しい逆再生に対し古い準備が音を出さないよう無効化する。Androidで背景再生が許されない場合、またはPiP終了後に背景再生が許されなくなった場合の逆再生も停止する。音声・実機確認は未実施。
 - PiP設定 `trk_apk_pip_mode_v1`／`trk_apk_pip_audio_v1` は端末内に保存し、設定バックアップには含まれず全設定リセットで削除。
@@ -61,12 +62,19 @@ cd android && ./gradlew assembleDebug
 
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
-- `npm run check`：**759件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
-- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40790308201)：renderer復旧、シンセ・測定音・ゲームSE・FXの切断対策を含む `fbc3b32` で成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
+- `npm run check`：**776件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
+- 今回の「前へ」追加を含む `1fa96b1` は[debug APK CI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364524)と[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364484)で成功。WebView上で設定の保存・復元と偽の再生位置による動作を確認したが、実音声・物理操作・Bluetoothは未検証。
+- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318767)：FX復旧保護・Media3テスト専用モデルと計測テストを含む `4d87377` で成功。モデルと計測テストはアプリに組み込まれない。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
 - [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
 - [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40781914878)（`4e09306`）で `chrome://crash` によりrendererを2回終了し、その都度の復旧画面・手動再起動・テスト用localStorageの保持・再生抑止を確認。noisy通知もpluginから模擬したが、OSの実際のイヤホン切断や音声出力は再現していない。PiP中の異常終了、強制終了、実機・他OSは未検証。
-- [API 35エミュレーター追加検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40782607596)（`bdb6807`）で復旧画面の背景→前景と、復旧後のActivity再生成時の保護も確認。シンセ・測定音・ゲームSE・FXの後続修正はエミュレーターで検査していない。
+- [API 35エミュレーター追加検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40782607596)（`bdb6807`）で復旧画面の背景→前景と、復旧後のActivity再生成時の保護も確認。この検査は後続のシンセ・測定音・ゲームSE・FX残響停止を実音声で検査していない。
+- [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40810902152)（`e45ae8e`）では、実WebViewでFX再構築の例外を注入し、模擬noisy通知後の警告表示、再生ガード、再試行と設定維持を確認した。実broadcast・物理切断・実音声・タッチではない。
+- [Media3契約のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40815605797)（`5e0702a`）で、テストAPK限定の `media3-common:1.11.1` のplaceholder、優先停止後の古い応答、複数Future取消中の同期再入を確認。再入時には古い表示を読める反例があり、方式は未確定。製品debug runtime依存グラフへのMedia3混入はない。サービス・実通信・音声・Bluetoothは試験していない。
+- [Media3共有FutureのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）で、複数命令の共有保留は途中の状態表示を遅延させ、先行登録リスナーから古い再生状態を読める反例も残ることを確認。採用は未決定。途中の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)は原因未特定で、後続再検査は成功。
+- [Media3意図同期案のAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）では、pause直後に `isPlaying=false` でも偽の遠隔再生主体が再生中であり得る反例を確認。Futureを即完了するAPI契約や各状態の意味・通知との適合も未確定で、採用しない。
+- [テスト専用MediaSessionのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119109)（`20073cf`）で、偽再生主体が再生中でもMedia3側は非再生、Android側はpauseと受け取るケースを確認。通知UI・Bluetooth・実音声は未検査。[最初のCI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)は原因未特定で、再検査成功は再発しない保証ではない。
+- [模擬メディアキーのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318738)（`4d87377`）で前・次・再生／一時停止を偽Playerへ配送。通常previousは曲の途中では現曲先頭へ戻り得る一方、previous-media-itemのみを有効にした条件では前曲へ移った。既存trkの選曲や物理Bluetoothは未検証。
 - **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
 - 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
 

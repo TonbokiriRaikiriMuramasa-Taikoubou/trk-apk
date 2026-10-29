@@ -40,6 +40,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     const w=dom.window; if(w.document.readyState!=="complete") await new Promise(resolve=>w.addEventListener("load",resolve,{once:true}));
     await new Promise(resolve=>setTimeout(resolve,1200));
     const d=w.document, core=w.Trk.core; let paused=false, pauses=0;
+    if (!native) assert.equal(d.getElementById("apkFxRecoveryNotice"),null,"web does not install the Android recovery notice");
     Object.defineProperty(core.video,"paused",{get:()=>paused,configurable:true});
     core.video.pause=()=>{paused=true; pauses++;};
     core.phase="title"; core.settings.fxAntenna=true; core.settings.mediaLoopTrigger="hold";
@@ -47,6 +48,14 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     Object.defineProperty(core.video,"duration",{value:100,configurable:true});
     d.getElementById("guideSkip").click();
     w.TrkMediaPlayer.open(); assert.equal(w.TrkMediaPlayer.isOpen(),true);
+    const previousOption=d.getElementById("previousAlwaysTrack");
+    assert.equal(previousOption.checked,false); assert.equal(core.settings.previousAlwaysTrack,false);
+    core.video.currentTime=10; assert.equal(w.TrkMediaPlayer.restartForPrevious(),true); assert.equal(core.video.currentTime,0);
+    previousOption.click(); assert.equal(core.settings.previousAlwaysTrack,true);
+    assert.equal(JSON.parse(w.localStorage.getItem("shadow_taiko_preferences_v2")).previousAlwaysTrack,true);
+    core.video.currentTime=10; assert.equal(w.TrkMediaPlayer.restartForPrevious(),false); assert.equal(core.video.currentTime,10);
+    previousOption.click(); assert.equal(core.settings.previousAlwaysTrack,false);
+    assert.equal(JSON.parse(w.localStorage.getItem("shadow_taiko_preferences_v2")).previousAlwaysTrack,false);
     assert.equal(w.TrkVideoMax.open(),true, "initialize fullscreen listeners");
     const loop=d.querySelector(".mediaLoopBox"), status=loop.querySelector(".hint");
     core.video.currentTime=10; loop.querySelector('[data-i18n="mediaLoopSetA"]').click();
@@ -91,11 +100,11 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
       // already-released envelope tail must disconnect on the native event.
       hidden=false; d.dispatchEvent(new w.Event("visibilitychange")); core.phase="title";
       core.settings.synthModeDisabled=false; core.settings.synthModeFastStart=true;
-      const sources=[], nodes=[], convolvers=[];
+      const sources=[], nodes=[], convolvers=[]; let failFxGain=false;
       const param=()=>({value:1,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},cancelScheduledValues(){},cancelAndHoldAtTime(){},setTargetAtTime(){}});
       const node=()=>{const n={links:new Set(),connect(destination){this.links.add(destination);return destination;},disconnect(destination){if(destination)this.links.delete(destination);else this.links.clear(); this.disconnected=true;},gain:param(),frequency:param(),Q:param()}; nodes.push(n);return n;};
       const source=()=>{ const s={...node(),detune:param(),start(){},stop(){},disconnected:false,disconnect(){this.disconnected=true;},addEventListener(type,fn){if(type==="ended")this.ended=fn;}}; sources.push(s); return s; };
-      const ac={currentTime:5,state:"running",sampleRate:100,destination:{},createGain:node,createBiquadFilter:node,createBufferSource:source,createMediaElementSource:node,
+      const ac={currentTime:5,state:"running",sampleRate:100,destination:{},createGain:()=>{if(failFxGain) throw new Error("test FX rebuild failure");return node();},createBiquadFilter:node,createBufferSource:source,createMediaElementSource:node,
         createBuffer:(_channels,length)=>({getChannelData:()=>new Float32Array(length)}),
         createConvolver:()=>{const n=node(); convolvers.push(n); return n;},
         createDynamicsCompressor:()=>({...node(),threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()}),
@@ -142,6 +151,20 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
       assert.equal(oldConvolver.disconnected,true,"old reverb memory is discarded before reconnecting");
       assert.ok(convolvers.length>1); assert.equal(JSON.stringify(w.TrkFX.current()),fxSettings,"FX settings survive");
       w.Trk.media.playSE(0); assert.equal(sources.length,44,"game sound works after deliberate resume");
+      // Failure on explicit resume must keep the video stopped, show a visible
+      // warning and allow a later user-initiated retry without auto-playing.
+      noisyCallback(); failFxGain=true;
+      assert.equal(core.audioSafety.resume(),false); assert.equal(core.audioSafety.blocked(),true);
+      const warning=d.getElementById("apkFxRecoveryNotice"); assert.ok(warning && !warning.hidden);
+      assert.equal(warning.getAttribute("role"),"alert"); assert.ok(warning.textContent.length>20);
+      core.applyLanguage("en"); assert.match(warning.textContent,/Audio could not be restored/);
+      core.applyLanguage("ja"); assert.match(warning.textContent,/復旧に失敗/);
+      assert.equal(fxOutput.links.has(ac.destination),false); assert.equal(paused,true);
+      await assert.rejects(core.video.play(),error=>error.name==="AbortError");
+      d.querySelector('.mediaPlayBtn')?.click(); assert.equal(core.audioSafety.blocked(),true,"untrusted click cannot retry");
+      failFxGain=false; assert.equal(core.audioSafety.resume(),true);
+      assert.equal(warning.hidden,true); assert.equal(fxOutput.links.has(ac.destination),true);
+      assert.equal(paused,true,"restoring the graph does not itself start playback");
     }
     assert.deepEqual(failures,[]);
   } finally {if(dom) dom.window.close(); await new Promise(resolve=>server.close(resolve));}

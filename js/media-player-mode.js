@@ -16,14 +16,14 @@ Object.assign(TEXT.ja, {
   mediaSubtitle:"ゲームを始めずに、曲を聴くための再生画面です。曲送り・リピート・シャッフル・速度・スリープタイマーを使えます。",
   mediaClose:"← 曲リストに戻る", mediaNoTrack:"曲を選ぶと、ここでフル再生できます。",
   mediaNow:"再生中", mediaPaused:"一時停止", mediaEnded:"再生終了",
-  mediaPrev:"前の曲", mediaNext:"次の曲", mediaPlay:"再生", mediaPause:"一時停止", mediaRestart:"最初から",
+  mediaPrev:"前へ", mediaNext:"次の曲", mediaPlay:"再生", mediaPause:"一時停止", mediaRestart:"最初から",
   mediaVolume:"音量", mediaMute:"ミュート", mediaUnmute:"ミュート解除", mediaSeek:"再生位置",
   mediaShuffle:"シャッフル", mediaRepeat:"リピート", mediaRepeatOff:"なし", mediaRepeatOne:"1曲", mediaRepeatAll:"全曲",
   mediaRate:"再生速度", mediaSleep:"スリープタイマー", mediaSleepOff:"なし", mediaSleep15:"15分", mediaSleep30:"30分", mediaSleep60:"60分",
   mediaQueue:"再生キュー", mediaQueueHint:"曲を選ぶと、この画面を閉じずに再生します。曲リストに追加した音源・共有フォルダ・曲パックをまとめて扱えます。",
   mediaSearch:"キューを検索…", mediaNoSongs:"まだ曲がありません。選曲画面から音源を追加してください。", mediaNoMatch:"一致する曲がありません。",
   mediaSleepSet:"{n}分後に再生を止めます。", mediaSleepDone:"スリープタイマーで停止しました。", mediaLoaded:"読み込み中…", mediaLoadFailed:"この曲を読み込めませんでした。",
-  mediaKeyboard:"Space：再生／一時停止　←→：10秒　N：次の曲　P：前の曲　Esc：閉じる　逆再生・区間ループ・壁紙は設定で割り当て",
+  mediaKeyboard:"Space：再生／一時停止　←→：10秒　N：次の曲　P：前へ　Esc：閉じる　逆再生・区間ループ・壁紙は設定で割り当て",
   mediaVideoKeysTitle:"🎬 動画プレーヤーのキー", mediaWallKey:"壁紙／スクリーンセーバー", mediaReverse:"逆再生", mediaReverseStart:"逆再生を開始", mediaForward:"順再生に戻す", mediaReverseLoading:"逆再生を準備中…", mediaReverseUnavailable:"この曲の逆再生用音声を準備できませんでした。映像のみで試します。", mediaReverseDone:"曲の先頭まで逆再生しました。",
   mediaLoop:"区間ループ", mediaLoopSetA:"A点を設定", mediaLoopSetB:"B点を設定", mediaLoopClear:"解除", mediaLoopMode:"区間ループの操作", mediaLoopToggle:"トグル", mediaLoopHold:"長押し中だけ", mediaLoopHint:"A点・B点を設定すると、範囲をくり返します。割り当てキーはA点 → B点／開始 → 解除を順に操作できます。", mediaLoopNone:"区間ループ：なし", mediaLoopOnlyA:"A点 {a} — B点を設定してください", mediaLoopRange:"{a} – {b} をくり返し中", mediaLoopNeedRange:"先にA点とB点を設定してください。", mediaLoopLabTitle:"🎛 ループ・ラボ", mediaLoopQuickHint:"5秒・10秒・20秒の区間をすぐ作れます。保存した区間は曲ごとに端末内へ記録します。", mediaLoopQuick5:"5秒", mediaLoopQuick10:"10秒", mediaLoopQuick20:"20秒", mediaLoopRandom:"🎲 ランダム区間", mediaLoopSave:"この区間を保存", mediaLoopPresets:"保存した区間", mediaLoopNoPresets:"保存した区間はまだありません。", mediaLoopDelete:"この区間を削除", mediaLoopClearPresets:"保存を消去", mediaLoopSaved:"区間を保存しました",
   mediaClipExport:"🎬 映像で書き出す", mediaClipBusy:"🎬 書き出し中…（区間の長さのぶん待ちます）", mediaClipDone:"🎬 書き出しました", mediaClipFailed:"書き出せませんでした", mediaClipNoVideo:"映像のない曲は書き出せません（音声だけの曲）", mediaClipUnsupported:"このブラウザでは映像の書き出しに対応していません", mediaClipNeedMedia:"先に曲を読み込んでください",
@@ -84,14 +84,14 @@ Object.assign(TEXT.zh, {
   dockCastPolicy:"投放天线", dockCastOff:"不投放（隐藏投放天线）", dockCastAntenna:"显示投放天线", dockCastHint:"投放天线与后台播放的天线分别开关，在这里隐藏也不会隐藏播放用的天线。不会自动连接，只在点击时于支持的浏览器打开选择画面。", dockCastUnsupported:"此浏览器不支持外部输出选择。", dockCastOn:"📡 已打开投放选择", dockCastOffDone:"📡 已断开投放", dockCastFailed:"无法开始外部输出。", dockCastButton:"投放", dockBackgroundPolicy:"后台播放天线", dockBackgroundOff:"不显示（无后台播放）", dockBackgroundAntenna:"在机台上显示天线", dockBackgroundCorner:"放到右上角（语言左侧·紧凑）", dockBackgroundHint:"可以与投放分开，只允许后台播放。选择「在机台上显示」或「放到右上角」并开启后，切到后台也会继续播放。",
   mediaTitle:"▶ 媒体播放器", mediaSubtitle:"不开始游戏也能听歌。支持切歌、循环、随机、播放速度和睡眠定时器。",
   mediaClose:"← 返回歌曲列表", mediaNoTrack:"选择歌曲后，就能在这里完整播放。", mediaNow:"正在播放", mediaPaused:"已暂停", mediaEnded:"播放结束",
-  mediaPrev:"上一首", mediaNext:"下一首", mediaPlay:"播放", mediaPause:"暂停", mediaRestart:"从头播放",
+  mediaPrev:"返回", mediaNext:"下一首", mediaPlay:"播放", mediaPause:"暂停", mediaRestart:"从头播放",
   mediaVolume:"音量", mediaMute:"静音", mediaUnmute:"取消静音", mediaSeek:"播放位置",
   mediaShuffle:"随机", mediaRepeat:"循环", mediaRepeatOff:"关闭", mediaRepeatOne:"单曲", mediaRepeatAll:"全部",
   mediaRate:"播放速度", mediaSleep:"睡眠定时", mediaSleepOff:"关闭", mediaSleep15:"15分钟", mediaSleep30:"30分钟", mediaSleep60:"60分钟",
   mediaQueue:"播放队列", mediaQueueHint:"选择歌曲后会在此画面中播放。添加的文件、共享文件夹和歌曲包会合并显示。",
   mediaSearch:"搜索队列…", mediaNoSongs:"还没有歌曲。请先在选曲画面添加音频。", mediaNoMatch:"没有匹配的歌曲。",
   mediaSleepSet:"将在{n}分钟后停止播放。", mediaSleepDone:"睡眠定时器已停止播放。", mediaLoaded:"正在读取…", mediaLoadFailed:"无法读取这首歌。",
-  mediaKeyboard:"空格：播放／暂停　←→：10秒　N：下一首　P：上一首　Esc：关闭　倒放／区间循环／壁纸可在设置中分配",
+  mediaKeyboard:"空格：播放／暂停　←→：10秒　N：下一首　P：返回　Esc：关闭　倒放／区间循环／壁纸可在设置中分配",
   mediaVideoKeysTitle:"🎬 视频播放器按键", mediaWallKey:"壁纸／屏幕保护", mediaReverse:"倒放", mediaReverseStart:"开始倒放", mediaForward:"恢复正放", mediaReverseLoading:"正在准备倒放…", mediaReverseUnavailable:"无法准备这首歌的倒放音频，将尝试仅倒放画面。", mediaReverseDone:"倒放已到达开头。",
   mediaLoop:"区间循环", mediaLoopSetA:"设为A点", mediaLoopSetB:"设为B点", mediaLoopClear:"解除", mediaLoopMode:"区间循环操作", mediaLoopToggle:"切换", mediaLoopHold:"按住时循环", mediaLoopHint:"设置A点和B点后重复区间。分配的按键会依次执行A点 → B点／开始 → 解除。", mediaLoopNone:"区间循环：关闭", mediaLoopOnlyA:"A点 {a} — 请设置B点", mediaLoopRange:"重复 {a} – {b}", mediaLoopNeedRange:"请先设置A点和B点。", mediaLoopLabTitle:"🎛 循环实验室", mediaLoopQuickHint:"可立即创建5秒、10秒或20秒区间。保存的区间会按歌曲保存在设备中。", mediaLoopQuick5:"5秒", mediaLoopQuick10:"10秒", mediaLoopQuick20:"20秒", mediaLoopRandom:"🎲 随机区间", mediaLoopSave:"保存此区间", mediaLoopPresets:"已保存区间", mediaLoopNoPresets:"还没有保存的区间。", mediaLoopDelete:"删除此区间", mediaLoopClearPresets:"清除保存", mediaLoopSaved:"区间已保存",
   mediaClipExport:"🎬 导出为视频", mediaClipBusy:"🎬 导出中…（需要等待区间的时长）", mediaClipDone:"🎬 已导出", mediaClipFailed:"无法导出", mediaClipNoVideo:"纯音频曲目无法导出为视频", mediaClipUnsupported:"此浏览器不支持导出视频", mediaClipNeedMedia:"请先载入曲目",
@@ -117,7 +117,7 @@ Object.assign(TEXT.ko, {
   dockCastPolicy:"캐스트 안테나", dockCastOff:"캐스트 안 함 (캐스트 안테나 숨기기)", dockCastAntenna:"캐스트 안테나 표시", dockCastHint:"캐스트 안테나는 백그라운드 재생 안테나와 별도로 켜고 끌 수 있으며, 여기서 숨겨도 재생용 안테나는 사라지지 않습니다. 자동 연결 없이 클릭할 때만 지원 브라우저의 선택기를 엽니다.", dockCastUnsupported:"이 브라우저는 외부 출력 선택을 지원하지 않습니다.", dockCastOn:"📡 캐스트 선택을 열었습니다", dockCastOffDone:"📡 캐스트 연결을 끊었습니다", dockCastFailed:"외부 출력을 시작하지 못했습니다.", dockCastButton:"캐스트", dockBackgroundPolicy:"백그라운드 재생 안테나", dockBackgroundOff:"표시하지 않기 (백그라운드 재생 없음)", dockBackgroundAntenna:"독에 안테나 표시", dockBackgroundCorner:"오른쪽 상단에 두기 (언어 왼쪽·컴팩트)", dockBackgroundHint:"캐스트와 별도로 백그라운드 재생만 허용할 수 있습니다. 독에 안테나 표시 또는 오른쪽 상단에 두기를 켜면 백그라운드에서도 계속 재생합니다.",
   mediaTitle:"▶ 미디어 플레이어", mediaSubtitle:"게임을 시작하지 않고 음악을 듣습니다. 곡 넘기기·반복·셔플·재생 속도·취침 타이머를 지원합니다.",
   mediaClose:"← 곡 목록으로 돌아가기", mediaNoTrack:"곡을 고르면 여기서 전체 재생할 수 있습니다.", mediaNow:"재생 중", mediaPaused:"일시정지", mediaEnded:"재생 완료",
-  mediaPrev:"이전 곡", mediaNext:"다음 곡", mediaPlay:"재생", mediaPause:"일시정지", mediaRestart:"처음부터",
+  mediaPrev:"이전", mediaNext:"다음 곡", mediaPlay:"재생", mediaPause:"일시정지", mediaRestart:"처음부터",
   mediaVolume:"볼륨", mediaMute:"음소거", mediaUnmute:"음소거 해제", mediaSeek:"재생 위치",
   mediaShuffle:"셔플", mediaRepeat:"반복", mediaRepeatOff:"끔", mediaRepeatOne:"한 곡", mediaRepeatAll:"전체",
   mediaRate:"재생 속도", mediaSleep:"취침 타이머", mediaSleepOff:"끔", mediaSleep15:"15분", mediaSleep30:"30분", mediaSleep60:"60분",
@@ -784,7 +784,27 @@ function playPause() {
   } else core.video.pause();
   renderMedia();
 }
+// Previous means restart after 3 seconds, unless the user opts into always
+// changing tracks. Never seek a live game: its chart/judgement clock must stay
+// in sync and its existing song-switch path handles that transition safely.
+function restartForPrevious() {
+  if (core.settings.previousAlwaysTrack === true || core.phase !== "title" || !core.videoReady ||
+      !Number.isFinite(core.video.currentTime) || core.video.currentTime <= 3) return false;
+  const wasReversing = reverseActive && !reverseLoading;
+  try { core.video.currentTime = 0; } catch (_) { return true; } // Do not unexpectedly skip if seeking fails.
+  if (reverseActive || reverseLoading) stopReverse(false, true);
+  saveMediaPosition(true);
+  core.refreshMediaSessionPosition?.();
+  renderMedia();
+  // Reverse audio was playing while the video element was paused. Continue
+  // forwards only for that case, and never bypass interruption/background guards.
+  if (wasReversing && !core.audioSafety?.blocked() && window.TrkApkPip?.allowsPlaybackStart?.() !== false) {
+    try { core.video.play().catch(() => {}); } catch (_) {}
+  }
+  return true;
+}
 async function stepMedia(dir) {
+  if (dir < 0 && restartForPrevious()) return;
   const it = nextMediaSong(dir);
   if (it) await playSong(it, true);
   else showMediaStatus("mediaNoSongs");
@@ -916,7 +936,7 @@ function installMediaSession() {
   });
   // Selecting a track can auto-start preview or game playback, so do not
   // dispatch these commands when background starts are disallowed.
-  act("previoustrack", () => { if (mayStart()) { core.audioSafety?.resume(); return mediaActive() ? stepMedia(-1) : sessionSong(-1); } });
+  act("previoustrack", () => { if (mayStart()) { core.audioSafety?.resume(); return mediaActive() ? stepMedia(-1) : (restartForPrevious() ? undefined : sessionSong(-1)); } });
   act("nexttrack", () => { if (mayStart()) { core.audioSafety?.resume(); return mediaActive() ? stepMedia(1) : sessionSong(1); } });
   act("seekbackward", d => seekBy(-(d && d.seekOffset || 10)));
   act("seekforward", d => seekBy(d && d.seekOffset || 10));
@@ -2004,6 +2024,7 @@ window.TrkMediaPlayer = { open:openMedia, close:closeMedia, isOpen:mediaActive,
   /* trk164: テスト用の素の関数（DOM不要の決定だけを取り出して検証できる） */
   resumeRewindSeconds, rewindResumePosition, planSleepFade, pipSupported, wakeLockSupported,
   mediaExitPlan };
+window.TrkMediaPlayer.restartForPrevious = restartForPrevious;
 /* ⏮ 常に最初から再生（trk193）：設定画面や曲名タブのバーで変わった値を、ここへも反映する */
 window.TrkMediaStartZeroSync = on => { if (startZeroNode) startZeroNode.checked = on === true; };
 window.Trk.overlay.set("media", false);

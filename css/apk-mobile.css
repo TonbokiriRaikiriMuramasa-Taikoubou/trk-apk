@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
    Title/settings use real screen pixels. Gameplay retains trk's 1920×1080 stage. */
+.apk-shell #apkFxRecoveryNotice { position:fixed; z-index:80000; top:max(8px,env(safe-area-inset-top)); left:max(8px,env(safe-area-inset-left)); right:max(8px,env(safe-area-inset-right)); max-width:680px; margin:auto; padding:12px 14px; border:1px solid #ffc879; border-radius:12px; background:#38230f; color:#fff5df; font:600 14px/1.5 system-ui,sans-serif; box-shadow:0 4px 18px #0009; pointer-events:none; }
+.apk-shell #apkFxRecoveryNotice[hidden] { display:none; }
 .apk-shell #stage[data-phase="title"] {
   left:0; top:0; width:100%; height:100%; transform:none !important;
 }

@@ -15,7 +15,7 @@ function setup(policy) {
   const sandbox = {window, core, navigator:{mediaSession:{setActionHandler:(name,fn) => {handlers[name]=fn;}}},
     mediaActive:() => state.active, reverseActive:false, reverseLoading:false,
     playPause(){calls.push("toggle"); core.video.paused=!core.video.paused;}, stepMedia:dir => calls.push(dir),
-    sessionSong:dir => calls.push(`session:${dir}`), seekBy:dir => calls.push(`seek:${dir}`), stopReverse(){}, renderMedia(){}, Number};
+    sessionSong:dir => calls.push(`session:${dir}`), restartForPrevious:() => false, seekBy:dir => calls.push(`seek:${dir}`), stopReverse(){}, renderMedia(){}, Number};
   vm.runInNewContext(`${match[0]}\ninstallMediaSession();`, sandbox);
   return {handlers,calls,state,core,window};
 }

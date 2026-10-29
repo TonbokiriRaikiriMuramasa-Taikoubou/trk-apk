@@ -4438,6 +4438,7 @@ function bannerSongBtnsSync() {
 }
 async function bannerSongStep(dir) {
   if (core.phase !== "title") return;
+  if (dir < 0 && window.TrkMediaPlayer?.restartForPrevious?.()) return;
   const it = dir < 0 ? prevSong() : nextSong();
   if (it) await selectSong(it);
 }

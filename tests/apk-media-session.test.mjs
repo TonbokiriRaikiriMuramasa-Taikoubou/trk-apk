@@ -14,7 +14,7 @@ function setup(active = true) {
   const window = {Trk:{play:{resumeGame:() => calls.push("resume-game"), pauseGame:() => calls.push("pause-game")}}};
   const sandbox = {navigator:{mediaSession:{setActionHandler:(action, fn) => {handlers[action] = fn;}}}, core, window,
     mediaActive:() => state.active, playPause() { calls.push("toggle"); if (state.reverse || state.loading) { state.reverse = false; state.loading = false; video.paused = false; } else video.paused = !video.paused; },
-    stepMedia:dir => calls.push(dir), sessionSong:dir => calls.push(`session:${dir}`), seekBy(){},
+    stepMedia:dir => calls.push(dir), sessionSong:dir => calls.push(`session:${dir}`), restartForPrevious:() => false, seekBy(){},
     stopReverse(resume) { calls.push(`stop-reverse:${resume}`); state.reverse = false; state.loading = false; if (resume) video.paused = false; }, renderMedia(){}, Number,
   };
   Object.defineProperty(sandbox, "reverseActive", {get:() => state.reverse});

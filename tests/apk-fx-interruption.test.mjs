@@ -17,8 +17,9 @@ function fixture() {
   const ac={currentTime:2,destination:{},createGain:node,createMediaElementSource:node};
   const G={src:null,ok:true,guard:null,guardConnected:false,eq:[],game:{},extra:new Map(),ac:null};
   const state={blocked:true,fail:false};
-  const window={Trk:{core:{audioSafety:{blocked:()=>state.blocked}}}};
+  const window={Trk:{core:{audioSafety:{blocked:()=>state.blocked,interrupt(){state.blocked=true; calls.push("interrupt");}}}}};
   const context={G,window,getAC:()=>ac,ensureWorklet(){},video:{addEventListener(){}},
+    showFxRecoveryNotice(){calls.push("notice");},hideFxRecoveryNotice(){calls.push("hide");},
     on:(n,fn)=>hooks[n]=fn,buildOutputPath(){calls.push("build");if(state.fail)throw Error("failure");},
     rebuild(){calls.push("rebuild");},applyOut(){calls.push("apply");},rebuildExtraMidiMix(){calls.push("extra");},
     console:{error(){calls.push("error");}}};
@@ -35,4 +36,5 @@ test("a failed FX rebuild stays disconnected rather than releasing old residual 
   const x=fixture(); x.context.ensureGraph(); x.state.blocked=false; x.hooks.audioOutputResumed();
   x.hooks.audioOutputInterrupted(); assert.equal(x.G.guard.connected,false);
   x.state.fail=true; x.hooks.audioOutputResumed(); assert.equal(x.G.guard.connected,false); assert.equal(x.G.guardConnected,false); assert.ok(x.calls.includes("error"));
+  assert.equal(x.state.blocked,true); assert.ok(x.calls.includes("interrupt")); assert.ok(x.calls.includes("notice"));
 });

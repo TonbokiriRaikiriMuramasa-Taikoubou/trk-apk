@@ -8,15 +8,27 @@ import static org.junit.Assume.assumeTrue;
 
 import android.app.PictureInPictureParams;
 import android.content.pm.ActivityInfo;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Rational;
 import android.view.KeyEvent;
 import androidx.lifecycle.Lifecycle;
+import androidx.media3.common.Player;
+import androidx.media3.common.SimpleBasePlayer;
+import androidx.media3.common.util.UnstableApi;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.SettableFuture;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
@@ -24,7 +36,194 @@ import org.junit.runner.RunWith;
 
 /** Emulator smoke only: neither physical touch nor audio/Bluetooth is covered. */
 @RunWith(AndroidJUnit4.class)
+@UnstableApi
 public class AndroidWebViewSmokeTest {
+    // Test-only fake: no audio, MediaSession, service, or bridge is created.
+    private static final class TestMedia3Player extends SimpleBasePlayer {
+        final SettableFuture<Void> pending = SettableFuture.create();
+        final boolean conservativePlaceholder;
+        boolean actualPlaying;
+        TestMedia3Player(boolean actualPlaying, boolean conservativePlaceholder) {
+            super(Looper.getMainLooper());
+            this.actualPlaying = actualPlaying;
+            this.conservativePlaceholder = conservativePlaceholder;
+        }
+        @Override protected State getState() {
+            return new State.Builder()
+                .setAvailableCommands(new Player.Commands.Builder().add(Player.COMMAND_PLAY_PAUSE).build())
+                .setPlaylist(Collections.singletonList(new MediaItemData.Builder("fixture").build()))
+                .setPlaybackState(Player.STATE_READY)
+                .setPlayWhenReady(actualPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+                .build();
+        }
+        @Override protected State getPlaceholderState(State suggested) {
+            return conservativePlaceholder ? getState() : suggested;
+        }
+        @Override protected ListenableFuture<?> handleSetPlayWhenReady(boolean value) { return pending; }
+        void changedActualState(boolean playing) { actualPlaying = playing; invalidateState(); }
+    }
+
+    // A deliberately small projection experiment, NOT an audio or Bridge implementation.
+    // All methods and simulated replies are invoked on the player's application thread.
+    private static final class SafetyProjectionPlayer extends SimpleBasePlayer {
+        static final class Operation {
+            final long epoch;
+            final long generation;
+            final SettableFuture<Void> future = SettableFuture.create();
+            Operation(long epoch, long generation) { this.epoch = epoch; this.generation = generation; }
+        }
+        final List<Operation> pending = new ArrayList<>();
+        long epoch = 1;
+        long generation;
+        long revision = -1;
+        int issued;
+        int blockedAttempts;
+        boolean blocked;
+        boolean projectedPlaying;
+
+        SafetyProjectionPlayer(boolean initialPlaying) {
+            super(Looper.getMainLooper());
+            projectedPlaying = initialPlaying;
+        }
+        @Override protected State getState() {
+            Player.Commands.Builder commands = new Player.Commands.Builder();
+            if (!blocked) commands.add(Player.COMMAND_PLAY_PAUSE);
+            return new State.Builder()
+                .setAvailableCommands(commands.build())
+                .setPlaylist(Collections.singletonList(new MediaItemData.Builder("fixture").build()))
+                .setPlaybackState(blocked ? Player.STATE_IDLE : Player.STATE_READY)
+                .setPlayWhenReady(!blocked && projectedPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+                .build();
+        }
+        @Override protected State getPlaceholderState(State suggested) { return getState(); }
+        @Override protected ListenableFuture<?> handleSetPlayWhenReady(boolean value) {
+            // Cached available commands can still be stale while futures are being drained.
+            if (blocked) {
+                blockedAttempts++;
+                return Futures.immediateVoidFuture();
+            }
+            Operation operation = new Operation(epoch, generation);
+            pending.add(operation);
+            issued++;
+            return operation.future;
+        }
+        void interrupt() {
+            generation++;
+            blocked = true;
+            projectedPlaying = false; // Unknown/unavailable, NOT proof the remote audio stopped.
+            List<Operation> abandoned = new ArrayList<>(pending);
+            pending.clear();
+            for (Operation operation : abandoned) operation.future.cancel(false);
+            invalidateState();
+        }
+        void reconnect() { interrupt(); epoch++; revision = -1; }
+        void explicitResumeForTest() { blocked = false; invalidateState(); }
+        boolean reply(Operation operation, long replyEpoch, long replyGeneration, long replyRevision, boolean playing) {
+            if (blocked || !pending.contains(operation) || replyEpoch != epoch || replyGeneration != generation
+                    || operation.epoch != replyEpoch || operation.generation != replyGeneration
+                    || replyRevision <= revision) return false;
+            revision = replyRevision;
+            projectedPlaying = playing;
+            pending.remove(operation);
+            operation.future.set(null);
+            return true;
+        }
+    }
+
+    @Test
+    public void media3PendingOperationsUsePlaceholderAndDeferInvalidation() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            TestMedia3Player optimistic = new TestMedia3Player(false, false);
+            assertTrue(!optimistic.isPlaying());
+            optimistic.play();
+            assertTrue("Default placeholder reports playing before the operation succeeds", optimistic.isPlaying());
+            optimistic.pending.setException(new IllegalStateException("simulated failure"));
+            assertTrue("Failed operation returns to the confirmed state", !optimistic.isPlaying());
+
+            TestMedia3Player cautiousStart = new TestMedia3Player(false, true);
+            cautiousStart.play();
+            assertTrue("Custom placeholder can avoid claiming play before acknowledgement", !cautiousStart.isPlaying());
+            cautiousStart.changedActualState(true);
+            assertTrue("invalidateState is deferred while a command is pending", !cautiousStart.isPlaying());
+            cautiousStart.pending.set(null);
+            assertTrue(cautiousStart.isPlaying());
+
+            TestMedia3Player cautiousStop = new TestMedia3Player(true, true);
+            cautiousStop.pause();
+            cautiousStop.changedActualState(false);
+            assertTrue("A confirmed stop is not visible while an operation remains pending", cautiousStop.isPlaying());
+            cautiousStop.pending.set(null);
+            assertTrue(!cautiousStop.isPlaying());
+        });
+    }
+    @Test
+    public void media3InterruptDrainsPendingButReentrantReadCanSeeStaleState() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            SafetyProjectionPlayer player = new SafetyProjectionPlayer(true);
+            player.pause();
+            player.play();
+            assertEquals(2, player.pending.size());
+            SafetyProjectionPlayer.Operation first = player.pending.get(0);
+            SafetyProjectionPlayer.Operation second = player.pending.get(1);
+            AtomicBoolean callbackRan = new AtomicBoolean(false);
+            AtomicBoolean observedStalePlaying = new AtomicBoolean(false);
+            first.future.addListener(() -> {
+                callbackRan.set(true);
+                observedStalePlaying.set(player.isPlaying());
+                // Simulate reentry during sequential cancellation: it must not issue a new command.
+                player.play();
+            }, MoreExecutors.directExecutor());
+            player.interrupt();
+            assertTrue(callbackRan.get());
+            assertTrue("An inline cancellation listener can see the old projection before all futures drain",
+                observedStalePlaying.get());
+            assertEquals("Reentry reaches the handler through stale commands", 1, player.blockedAttempts);
+            assertEquals("Blocked handler rejects reentrant play", 2, player.issued);
+            assertTrue(first.future.isCancelled());
+            assertTrue(second.future.isCancelled());
+            assertTrue(player.pending.isEmpty());
+            assertTrue(!player.isPlaying());
+            assertEquals(Player.STATE_IDLE, player.getPlaybackState());
+            assertTrue(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE));
+        });
+    }
+
+    @Test
+    public void media3InterruptedGenerationAndOldEpochCannotCompleteNewPlay() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            SafetyProjectionPlayer player = new SafetyProjectionPlayer(false);
+            player.play();
+            SafetyProjectionPlayer.Operation old = player.pending.get(0);
+            player.interrupt();
+            player.play();
+            assertEquals("Play while blocked is not issued", 1, player.issued);
+            player.explicitResumeForTest();
+            player.play();
+            SafetyProjectionPlayer.Operation current = player.pending.get(0);
+            assertTrue(!player.reply(old, old.epoch, old.generation, 999, true));
+            assertTrue("Even a reply associated with the new operation needs the current generation",
+                !player.reply(current, current.epoch, old.generation, 999, true));
+            assertTrue("Old generation cannot complete current operation", !current.future.isDone());
+            assertTrue("Non-increasing revision is rejected", !player.reply(current, current.epoch, current.generation, -1, true));
+            assertTrue(!player.isPlaying());
+            assertTrue(player.reply(current, current.epoch, current.generation, 1, true));
+            assertTrue(player.isPlaying());
+            assertTrue("Duplicate reply is ignored", !player.reply(current, current.epoch, current.generation, 2, false));
+            assertTrue(player.isPlaying());
+
+            player.reconnect();
+            player.explicitResumeForTest();
+            player.play();
+            SafetyProjectionPlayer.Operation afterReconnect = player.pending.get(0);
+            assertTrue(!player.reply(current, current.epoch, current.generation, 1000, false));
+            assertTrue("New operation cannot accept a previous connection's epoch",
+                !player.reply(afterReconnect, current.epoch, afterReconnect.generation, 1000, false));
+            assertTrue(!afterReconnect.future.isDone());
+            assertTrue(player.reply(afterReconnect, afterReconnect.epoch, afterReconnect.generation, 1, true));
+            assertTrue(player.isPlaying());
+        });
+    }
+
     private String evaluate(ActivityScenario<MainActivity> scenario, String javascript) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<String> value = new AtomicReference<>();
@@ -48,6 +247,27 @@ public class AndroidWebViewSmokeTest {
             SystemClock.sleep(250);
         } while (SystemClock.elapsedRealtime() < end);
         assertEquals("WebView condition: " + expression, "true", result);
+    }
+
+    @Test
+    public void previousButtonOptionPersistsAndControlsRestartInWebView() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkMediaPlayer && !!window.Trk.core");
+            // Real app DOM/JS in WebView; only the media position is faked. No actual audio is tested.
+            String expression = "(function(){" +
+                "const c=window.Trk.core,b=document.getElementById('previousAlwaysTrack');" +
+                "if(!b||c.phase!=='title') return false;" +
+                "c.videoReady=true; c.currentSong={key:'previous-test',title:'previous-test'};" +
+                "let t=10;Object.defineProperty(c.video,'currentTime',{configurable:true,get:()=>t,set:v=>{t=v}});" +
+                "c.settings.previousAlwaysTrack=false;b.checked=false;" +
+                "const first=window.TrkMediaPlayer.restartForPrevious()&&t===0;" +
+                "b.checked=true;b.dispatchEvent(new Event('change',{bubbles:true}));t=10;" +
+                "const saved=JSON.parse(localStorage.getItem('shadow_taiko_preferences_v2')||'{}');" +
+                "const second=!window.TrkMediaPlayer.restartForPrevious()&&t===10&&saved.previousAlwaysTrack===true;" +
+                "b.checked=false;b.dispatchEvent(new Event('change',{bubbles:true}));" +
+                "return first&&second&&c.settings.previousAlwaysTrack===false;})()";
+            assertEquals("true", evaluate(scenario, expression));
+        }
     }
 
     @Test
@@ -152,6 +372,33 @@ public class AndroidWebViewSmokeTest {
             eventually(scenario, "window.Trk.core.audioSafety.blocked()");
             evaluate(scenario, "window._blockedPlay='pending'; Trk.core.video.play().then(() => window._blockedPlay='played', e => window._blockedPlay=e.name)");
             eventually(scenario, "window._blockedPlay === 'AbortError'");
+        }
+    }
+
+    @Test
+    public void fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkFX && !!Trk.core.audioSafety");
+            // Real WebView/AudioContext, but an injected exception and a simulated
+            // plugin callback. This is not a physical disconnect or audio test.
+            assertEquals("true", evaluate(scenario,
+                "Boolean(TrkFX.select('piano') && Trk.media.audioCtx && document.getElementById('apkFxRecoveryNotice').hidden)"));
+            evaluate(scenario, "window._fxBefore=JSON.stringify(TrkFX.current()); window._fxGain=Trk.media.audioCtx.createGain.bind(Trk.media.audioCtx)");
+            scenario.onActivity(activity -> {
+                TrkDevicePlugin device = (TrkDevicePlugin) activity.getBridge().getPlugin("TrkDevice").getInstance();
+                assertNotNull(device); device.audioOutputBecameNoisy();
+            });
+            eventually(scenario, "Trk.core.audioSafety.blocked()");
+            evaluate(scenario, "Trk.media.audioCtx.createGain=()=>{throw new Error('instrumented failure')}; window._fxResume=Trk.core.audioSafety.resume()");
+            eventually(scenario, "window._fxResume === false && Trk.core.audioSafety.blocked() && !document.getElementById('apkFxRecoveryNotice').hidden");
+            assertEquals("true", evaluate(scenario,
+                "Boolean(document.getElementById('apkFxRecoveryNotice').getBoundingClientRect().height > 0 && Trk.core.video.paused)"));
+            evaluate(scenario, "window._fxPlay='pending'; Trk.core.video.play().then(()=>window._fxPlay='played',e=>window._fxPlay=e.name)");
+            eventually(scenario, "window._fxPlay === 'AbortError'");
+            evaluate(scenario, "Trk.media.audioCtx.createGain=window._fxGain; window._fxRetry=Trk.core.audioSafety.resume()");
+            eventually(scenario, "window._fxRetry === true && !Trk.core.audioSafety.blocked() && document.getElementById('apkFxRecoveryNotice').hidden");
+            assertEquals("true", evaluate(scenario,
+                "Boolean(Trk.core.video.paused && JSON.stringify(TrkFX.current()) === window._fxBefore)"));
         }
     }
 

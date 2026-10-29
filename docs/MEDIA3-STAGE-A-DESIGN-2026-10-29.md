@@ -1,6 +1,6 @@
 # Media3段階A：WebView橋渡しの設計案（2026-10-29）
 
-**設計案のみ。Media3、サービス、Audio Focus、以下の通信方式はいずれも未実装・未検証。** 既存のWebViewを唯一の音声・映像再生主体とし、FX・解析・ゲームを維持する。Media3サービスは外部操作の仲介者であり、ExoPlayerを同時に動かさない。サービスを加えてもWebViewやプロセス停止後の音声継続は保証できない。既存の[Media3計画](media3-plan.md)、[レビュー対応](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md)、[実機チェック](ANDROID-DEVICE-CHECKS.md)と併用する。
+**設計案のみ。製品アプリへのMedia3、サービス、Audio Focus、以下の通信方式はいずれも未実装・未検証。** Android計測テスト専用に `media3-common` を使用する試験を追加したが、サービスや実再生には接続しない。 既存のWebViewを唯一の音声・映像再生主体とし、FX・解析・ゲームを維持する。Media3サービスは外部操作の仲介者であり、ExoPlayerを同時に動かさない。サービスを加えてもWebViewやプロセス停止後の音声継続は保証できない。既存の[Media3計画](media3-plan.md)、[レビュー対応](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md)、[実機チェック](ANDROID-DEVICE-CHECKS.md)と併用する。
 
 ## 責務と一貫性
 
@@ -29,6 +29,50 @@
 3. pause、切断、Audio Focus喪失、renderer終了、背景禁止、サービス破棄は優先的に再生を止め、進行中のplay／選曲・decodeを世代で無効化する。後からガードを明示解除しても、古い命令の遅延完了は再生しない。切断後は再接続だけで再開しない。ゲーム中やアンテナOFFの背景では既存ルールを尊重し、PiPは実稼働を判断する。
 4. 応答期限は機器を測定して決める。期限切れ・Bridge消失時は保留命令を失敗として整理し、ネイティブ表示を安全側へ戻す。タイムアウトはWeb側停止成功を意味しない。再接続後は新epochの実状態を受信し、期限切れのplayやnextを再送しない。Web側が無応答の場合に音声を確実に停止できるとは限らない。
 5. 復旧直後・切断後・プロセス再作成後に、OSからの古いコマンドやキャッシュだけで音を再開しない。実際の外部ユーザー操作を明示再開とみなせる条件、認可、復旧ガード解除は実装前に定義・テストする。プロセス終了後の自動再開仕様は未決。
+
+## テスト専用モデルでの検討
+
+`tests/helpers/media3-stage-a-model.mjs` と `tests/media3-stage-a-model.test.mjs` は、偽Web再生主体・偽ネイティブ表示・手動時計による**設計検討用モデル**。アプリにもAPKにも組み込まず、実際のMedia3・Bridge・音声・OSを実装／検査したものではない。実行例は `node --test tests/media3-stage-a-model.test.mjs`。固定の3曲キュー等は仮のfixtureであり、trkの実際のキューや前後曲の仕様ではない。
+
+モデルでは、新epochを使う再接続、revision・generationの古い応答の拒否、命令IDの重複排除、再生／停止の冪等性、次曲命令の順序、pause・切断後の古い非同期処理取消、期限切れ、矛盾するsnapshotの拒否を検査した。重複排除表が一杯なら新規命令を拒否する保守的な仮定を置き、古いIDを安全性の根拠なく削除しない。これは実用的な容量・期限・再接続設計が決まったことを意味しない。停止要求自体が配送できない場合、JSの停止は保証できない。
+
+**重要な反例**：Web側が期限前に再生を開始し、応答だけが遅れた場合、ネイティブのタイムアウトで表示を停止・接続を無効化しても、Web側では音が続き得る。取消や停止を送っても、JSが凍結・終了していれば到達は保証できない。モデルの手動時計・同じ期限値・協調的な取消は実機で保証されておらず、時計の基準、配送順、実際のPlayerの仮状態、JS停止を強制できるか、通信断中の安全策を別途設計・測定する。WebViewに再生主体を残す案の制約として扱い、タイムアウトだけで消音できると主張しない。
+
+## 実ライブラリでの契約検査（API 35エミュレーター）
+
+Android計測テストだけで Apache-2.0 の `androidx.media3:media3-common:1.11.1` を固定し、実 `SimpleBasePlayer` と未完了Futureを使って、仮のplaying表示と `invalidateState()` のタイミングを確かめる試験を追加した。音声、セッション、サービス、Bridgeは作らない。依存は `androidTestImplementation` のみで、CIはアプリのdebug runtime依存にMedia3が混入していないことも検査する。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40813391110)（`18c9676`）で検査とdebug runtime依存グラフの確認が成功。製品への採用・バージョン決定は別途行う。
+
+[同バージョンの公式実装](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/SimpleBasePlayer.java)上、標準のplaceholderは操作成功を先読みする。`getPlaceholderState()` を上書きできる一方、保留中は `invalidateState()` を呼んでも即時には反映されず、保留操作がすべて終了するまで状態更新が遅れる。試験では、未完了のplayが既定placeholderで `isPlaying=true` となり、失敗で確認済み状態に戻った。確認済み状態を返すplaceholderなら未確認のplay表示を避けられたが、逆にpause保留中に実際の状態を停止へ変え `invalidateState()` しても、Future完了まで `isPlaying=true` のままだった。緊急停止の反映と保留Futureの整理を設計せずに、単にplaceholderを上書きすれば安全になるとは考えない。ライブラリは `@UnstableApi` のため、採用候補を変えた際も同じ検証が必要。
+
+### 優先停止・古い応答の試作検査（API 35エミュレーター）
+
+テストAPK内だけの `SafetyProjectionPlayer` で、遮断フラグとgenerationを先に変更し、保留Futureを整理して表示を `STATE_IDLE`／play不可へ移す案を検査する。これは**確認済み消音ではなく、実状態不明・利用不可の表示**。停止要求の実配送、タイムアウト、時刻、実WebView・Bridge・リモート再生は実装しない。再接続時のepoch、generation、revisionと保留命令の一致を仮定し、古い応答や重複応答が新しい命令を完了させないことを確認する。認可済み再開も試験用の直接操作であり、実OSコマンドの認証・自動再開対策の実装ではない。
+
+複数Futureを逐次キャンセルする間に、そのFutureのリスナーが同期的に再入する反例も検査する。保留操作が残っていれば `SimpleBasePlayer` のcached stateはまだ古く、再入時に再生中と読める可能性があるため、フラグ変更とFutureの逐次整理だけを原子的な状態切替とみなさない。コマンド処理側でも遮断を確認し、リスナーの実行順・再入、複数保留、寿命管理を含む別の設計と検証が必要。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40815605797)（`5e0702a`）で上記の2検査が成功。具体的には、2個の保留Futureのうち先に取り消したFutureの同期リスナーから、残る保留中に古い `isPlaying=true` と古いコマンド可否を観測できた。リスナーからのplay再入はハンドラー内の遮断確認で新命令を発行せず、整理完了後は `STATE_IDLE`・play不可になった。これは再入問題の解決を示すものではなく、観測し得る範囲と別途必要な対策を示す反例。
+
+### 一つの保留単位にまとめる案（API 35エミュレーター）
+
+テストAPK専用の `Media3BarrierExperimentTest` で、複数命令に同一のPlayer向けFutureを返し、個々の応答は別管理する候補を比較する。全命令が終わるまでFutureを解決しないため、途中の確認済み状態も表示へ反映されない。遮断ではgeneration・遮断フラグを先に更新し、保留を消してから旧Futureをキャンセルする。遮断処理の最中は明示再開も受け付けない。確認するのはテスト用モデルと実 `SimpleBasePlayer` の状態のみで、通信・タイムアウト・実音声・外部操作の認可ではない。
+
+Playerの状態変更リスナーからの再入と、Media3より前にFuture完了リスナーが登録された場合の反例の双方を検査する。Futureを単一化しても、任意のコールバックや公開APIに対し状態切替が原子的になると仮定しない。全命令待ちによる表示遅延、寿命・容量・期限、同一Futureを複数回返すことのAPI契約とバージョン依存も別途検討が必要。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817265509)（`b5e5e9e`）で両検査が成功した。仮の通常ケースでは、2命令のうち最初の応答は残る命令が終わるまで表示されず、遮断時のPlayer状態リスナーは停止・命令不可を観測し、遮断処理中の明示再開は拒否された。古い命令の遅延応答は新しい保留を完了しなかった。一方、**Media3のリスナーより先に登録したFuture完了リスナーは、遮断中でも古いplayingを読めた**。その再入によるplay発行はハンドラーの遮断確認で拒否できたが、状態表示の原子性は得られない。同一Futureの内部管理やリスナー順序に依存する方式は採用確定せず、公開しない設計と実際の再入経路をさらに精査する。後続の[CI再実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)（`ca3df46`）はAndroidビルド／計測テストの段階で失敗したが、取得できたannotationsでは原因を特定できなかった。エラー表示を改善した後の[再検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）は成功し、新規2検査の成功もannotationで確認。ただし以前の失敗原因は未特定で、再発しない保証はない。
+
+### 意図を同期更新する案（API 35エミュレーター）
+
+実 `SimpleBasePlayer` を使うテスト専用の別案として、`playWhenReady` にユーザー意図を同期記録して完了済みFutureを返し、仮の結果待ちを `STATE_BUFFERING` で表し、その後の結果で `invalidateState()` する模型を追加した。Future完了は「意図の更新」のみで、**Bridge配送・再生／停止・消音の成功を示さない**。テスト内の遠隔再生フラグと応答・タイムアウトは手動の仮定で、WebView・音声・時刻・通信ではない。
+
+この割当ては実APIに適合する設計として承認したものではない。[公式Player定義](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/Player.java)では `playWhenReady` は意図、`isPlaying` は位置が進みメディアが提示されている状態、`STATE_BUFFERING` はすぐに再生できず再生準備中、`STATE_IDLE` は停止／失敗などで通常 `prepare()` が必要な状態。停止要求中もWeb側が実際に再生している状況へこれらを割り当てると矛盾し得る。意図更新だけで `handleSetPlayWhenReady` のFutureを完了することがAPI契約上適切かも未決。MediaSession／通知が各値をどう解釈するかを検証するまでは採用しない。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）で3検査が成功した。仮のplayは意図が即時trueとなり、結果待ちに `isPlaying=false`、成功応答後にtrueとなった。一方、仮のpauseは応答前から `isPlaying=false` になり、**独立した偽の遠隔再生フラグはtrueのまま**だった。失敗・タイムアウト・遅延応答後も「表示が停止」だけでは遠隔消音を証明できない。同期リスナーからの遮断・再入と古い応答の拒否もこの限定された模型で確認した。実通信・音声や全ての再入経路の検証ではない。
+
+### MediaSession・コントローラーへの伝播（API 35エミュレーター）
+
+テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。[再検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119109)（`20073cf`）で、Media3コントローラーからpauseを送ると、偽の遠隔再生フラグがtrueのままでも、Media3側では `playWhenReady=false`／`STATE_BUFFERING`／`isPlaying=false`、Android側では `STATE_PAUSED` を観測した。遮断後、Media3側のplay/pauseコマンドは利用不可となった。この特定の仮状態・API 35での結果であり、通知UIや他OS・他アプリの表示、実際の音声停止を保証しない。テスト用セッションはPlayerとともに解放する。
+
+最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。再検査は成功したが再発しない保証はない。失敗注釈は、通常logcatよりJUnit失敗を優先するよう改善した。
+
+### 次・前・再生の模擬メディアキー（API 35エミュレーター）
+
+実Media3のテスト用セッションにAndroidプラットフォームのMediaControllerから模擬 `KEYCODE_MEDIA_PREVIOUS`／`NEXT`／`PLAY_PAUSE` を送り、偽Playerへの命令と前曲の位置を調べる検査を追加した。物理キー・Bluetooth・複数クリックの翻訳、アプリのWeb側命令、OSの音量制御は対象外。[API 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318738)（`4d87377`）で、模擬キーによる前・次・独立した再生／一時停止が偽Playerへ届くことを確認した。通常のpreviousを有効にすると3秒の仮しきい値を超えた位置では現在曲の先頭へ戻り、先頭付近の次のpreviousで前曲へ移った。通常previousを無効にしてprevious-media-itemを有効にした条件では、同じ位置から前曲へ移った。これは固定3曲・手動位置・同一アプリのコントローラーによる例で、実trkの選曲動作・実機・他アプリへの互換性を保証しない。最初の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40824514715)はテスト内の型名衝突によるコンパイルエラーで、名前修正後に成功した。
+
+[Media3 1.11.1の `BasePlayer`](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/BasePlayer.java)では、通常の `seekToPrevious()` は位置がしきい値を超えると同じ曲の先頭へ戻し、そうでなければ前曲へ進む。利用者の判断により、通常のプレイヤー／選曲画面でも3秒を超えたら先頭、3秒以内は前曲を既定とし、❓謎設定で常に前曲へ移る選択を追加した。ゲーム中は譜面との同期を壊さないため曲送りの既存動作を維持する。将来Media3導入時は、この設定とゲーム・選曲の違いも含めWeb側の挙動と同期する。[レガシーセッションの実装](https://github.com/androidx/media/blob/1.11.1/libraries/session/src/main/java/androidx/media3/session/MediaSessionLegacyStub.java)には、通常のpreviousが利用不可ならprevious-media-itemを試す分岐もあるが、利用可能コマンドを制限すると他のコントローラーでの操作性に影響し得る。採用可否・前後曲の境界・リピート／シャッフル・認可は別途検討する。
 
 ## サービス・フォーカス・検証順
 

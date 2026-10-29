@@ -14,14 +14,19 @@
   core.audioSafety = {
     blocked:() => blocked,
     version:() => generation,
+    // Re-latch if restoring an output graph fails. This also invalidates any
+    // asynchronous playback started under the previous generation.
+    interrupt:() => outputInterrupted(),
     resume:() => {
       const wasBlocked = blocked; blocked = false;
       if (wasBlocked) core.emit("audioOutputResumed");
+      if (blocked) return false;
       if (recoveryPending && typeof device.acknowledgeRendererRecovery === "function") {
         recoveryPending = false;
         try { Promise.resolve(device.acknowledgeRendererRecovery()).catch(error => console.warn("Unable to save recovery acknowledgement", error)); }
         catch (error) { console.warn("Unable to save recovery acknowledgement", error); }
       }
+      return !blocked;
     }
   };
   // Guard automatic callers in the existing WebView code. Pause also cancels a

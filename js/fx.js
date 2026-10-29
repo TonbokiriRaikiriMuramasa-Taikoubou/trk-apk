@@ -214,6 +214,24 @@ Object.assign(TEXT.ko, {
   sfxWorkletWait:"⏳ 고정밀 모드 준비 중이에요. 잠시 후 다시.", sfxWorkletNo:"⚠ 이 브라우저에서는 🚪🧹🎚를 쓸 수 없어요 (✨🧲📢 단은 작동해요)."
 });
 
+// Visible independently of the settings panel so a failed audio restoration
+// does not look like a successfully playing, silent track.
+TEXT.ja.sfxRecoveryBlocked = "⚠ 音声の復旧に失敗したため、再生を停止しました。再生を押してもう一度お試しください。繰り返す場合はデータを保存してアプリを再起動してください。";
+TEXT.en.sfxRecoveryBlocked = "⚠ Audio could not be restored, so playback was stopped. Press play to retry. If this continues, save your data and restart the app.";
+TEXT.zh.sfxRecoveryBlocked = "⚠ 音频恢复失败，播放已停止。请按播放重试；如果仍然失败，请保存数据并重新启动应用。";
+TEXT.ko.sfxRecoveryBlocked = "⚠ 오디오 복원에 실패해 재생을 중지했습니다. 재생을 눌러 다시 시도하세요. 계속 실패하면 데이터를 저장하고 앱을 다시 시작하세요.";
+const fxRecoveryNotice = window.Trk.core.audioSafety ? document.createElement("div") : null;
+if (fxRecoveryNotice) {
+  fxRecoveryNotice.id = "apkFxRecoveryNotice"; fxRecoveryNotice.hidden = true;
+  fxRecoveryNotice.setAttribute("role", "alert"); fxRecoveryNotice.setAttribute("aria-live", "assertive");
+  document.body.append(fxRecoveryNotice);
+}
+function showFxRecoveryNotice() {
+  if (fxRecoveryNotice) { fxRecoveryNotice.textContent = tr("sfxRecoveryBlocked"); fxRecoveryNotice.hidden = false; }
+}
+function hideFxRecoveryNotice() { if (fxRecoveryNotice) fxRecoveryNotice.hidden = true; }
+on("language", () => { if (fxRecoveryNotice && !fxRecoveryNotice.hidden) fxRecoveryNotice.textContent = tr("sfxRecoveryBlocked"); });
+
 /* ============ ② 設定 ============ */
 const FX_STORE = "trk_fx_presets_v1", FX_MAX = 30, TEMP_ID = "__chart", RECENT_MAX = 5, FAV_MAX = 40, RACK_MAX = 8;
 const GAME_DEF = { miss:true, combo:true, pinch:false, blast:true, pan:false };
@@ -800,7 +818,14 @@ on("audioOutputResumed", () => {
     G.guard.gain.cancelScheduledValues(G.ac.currentTime);
     G.guard.gain.setValueAtTime(1, G.ac.currentTime);
     G.guard.disconnect(); G.guard.connect(G.ac.destination); G.guardConnected = true;
-  } catch (e) { console.error("Unable to restore the FX output safely", e); }
+    hideFxRecoveryNotice();
+  } catch (e) {
+    console.error("Unable to restore the FX output safely", e);
+    // A caller may proceed to video.play() immediately after resume(). Re-latch
+    // the shared safety guard so that attempted playback cannot silently run.
+    try { window.Trk.core.audioSafety?.interrupt(); } catch (error) { console.error(error); }
+    showFxRecoveryNotice();
+  }
 });
 /* 🔊 音量の平準化（trk168）：今の曲について補正量を計算し、G.norm に入れる。
    材料の優先順は「ファイルの ReplayGain タグ（library.js の songTagsOf 経由）→ 解析の loudness（media.js）」。
