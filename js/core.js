@@ -95,6 +95,48 @@ function cleanTvParamFavorites(v) {
   }
   return out;
 }
+/* Favorite backups may contain only some kinds or fields. Missing data is
+   preserved; malformed fields are reported, not silently converted to empty. */
+function cleanSongFav(v) {
+  if (!Array.isArray(v)) return [];
+  return [...new Set(v.filter(k => typeof k === "string" && k.trim()).map(k => k.trim().slice(0, 200)))].slice(0, 2000);
+}
+function mergeImportedFavs(current, incoming) {
+  const out = current && typeof current === "object" && !Array.isArray(current) ? { ...current } : {};
+  const errors = [], applied = [];
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) return { value:out, applied, errors:["favs"] };
+  for (const kind of ["tv", "fx", "song"]) {
+    if (!Object.prototype.hasOwnProperty.call(incoming, kind)) continue;
+    const source = incoming[kind];
+    if (!source || typeof source !== "object" || Array.isArray(source)) { errors.push("favs." + kind); continue; }
+    const old = out[kind];
+    const next = old && typeof old === "object" && !Array.isArray(old) ? { ...old } : {};
+    let changed = false;
+    for (const field of ["sub", "frozen", "former", "pins", "locks", "active"]) {
+      if (!Object.prototype.hasOwnProperty.call(source, field)) continue;
+      const value = source[field], label = "favs." + kind + "." + field;
+      if (field === "active") {
+        if (!["main", "sub", "frozen", "former"].includes(value)) { errors.push(label); continue; }
+        next.active = value; changed = true; continue;
+      }
+      if (!Array.isArray(value) || value.some(id => typeof id !== "string")) { errors.push(label); continue; }
+      if (field === "locks") {
+        if (value.some(id => !["main", "sub", "frozen"].includes(id))) { errors.push(label); continue; }
+        next.locks = [...new Set(value)].slice(0, 3);
+      } else {
+        const cleaned = value.map(id => id.trim().slice(0, 200));
+        if (cleaned.some(id => !id || (kind !== "song" && !/^[A-Za-z0-9_:.\-]{1,64}$/.test(id)))) { errors.push(label); continue; }
+        next[field] = [...new Set(cleaned)].slice(0, 2000);
+        if (new Set(cleaned).size > 2000) errors.push(label);
+      }
+      changed = true;
+    }
+    for (const field of Object.keys(source)) if (!["sub", "frozen", "former", "pins", "locks", "active"].includes(field)) errors.push("favs." + kind + "." + field);
+    if (changed) { out[kind] = next; applied.push(kind); }
+  }
+  for (const key of Object.keys(incoming)) if (!["tv", "fx", "song"].includes(key)) errors.push("favs." + key);
+  return { value:out, applied, errors };
+}
 /* 🗑 消した trk の自動リストのID（library.js が作り直さないための印）。trk- で始まるIDだけ、重複なし・200件まで */
 function cleanTrkRemoved(v) {
   if (!Array.isArray(v)) return [];
@@ -176,7 +218,7 @@ const LITE_ENUM_VALUES = {
    "icon" は文字を出さない（🐔 のアイコンだけ）。名前と色は固定なので、ここで選べるのは表示名だけ。 */
 const TRK_ENUM_VALUES = {
   trkTabName: ["full", "short", "icon"],
-  chartGen: ["1", "2", "3", "4"], // 🎼 1・2は旧方式、3は新方式（既定）、4は遊びの文法（試験中。js/chart-gen.js）
+  chartGen: ["1", "2", "3", "4"], // 3=A（従来）、4=B（新規の既定）
   mediaKeepLimit: ["1g", "5g", "unlimited"] // 🎵 保存棚の上限（ブラウザー側の容量上限は別に適用）
 };
 
@@ -220,10 +262,18 @@ const settings = {
   mediaReloadOnExit: prefs.mediaReloadOnExit === true,
   previousAlwaysTrack: prefs.previousAlwaysTrack === true, // ⏮ オフは3秒を超えたら曲の先頭へ
   judgeOrdered: prefs.judgeOrdered === true, /* ❓謎設定：MANUALの判定を昔のやり方（時刻順・色違いは常にMISS）にする（既定はオフ＝js/judge-match.js の "smart"） */
+  /* ❓謎設定：🧊フリーズ（凍結）の解除をワンタップにする（trk215）。既定はオフ＝🔒を3秒長押しで解除する。
+     凍結は「守る」ための仕組みなので、一括で管理・解除したい人向けの暫定の抜け道として置く。 */
+  favQuickUnfreeze: prefs.favQuickUnfreeze === true,
+  /* ⭐ お気に入りのフォルダ（1軍／2軍／🧊フリーズ／📤元お気に入り・📌ピン・凍結）の保存先（trk215）。
+     1軍だけはこれまでどおり tvFav／fxFav／songFav。js/favs.js が保存のたびに書き込みます。 */
+  favs: (prefs.favs && typeof prefs.favs === "object" && !Array.isArray(prefs.favs)) ? prefs.favs : {},
+  songFav: cleanSongFav(prefs.songFav),
   artWallpaperBg: prefs.artWallpaperBg === true,                     // 🖼 静止画を全画面へ拡大（オフは譜面中は右上、他は原寸以下で動画枠中央）
   useStudyArtwork: prefs.useStudyArtwork === true,                   // 📚 書斎で割り当てた画像をTV／ゲーム背景にも使う（既定オフ）
   hideArtworkDuringChart: prefs.hideArtworkDuringChart === true,     // 🎼 譜面中は静止画を隠す（既定オフ）
-  chartGen: pick(prefs.chartGen, ["1", "2", "3", "4"], "3"),             // 🎼 自動譜面の作り方（既定は新方式。旧方式1・2は旧譜面の再生成用、4は試験中）
+  chartGenChosen: prefs.chartGenChosen === true,
+  chartGen: pick(prefs.chartGen, ["1", "2", "3", "4"], "4"), // 保存済み値は旧版の意図を判別できないため維持
   seed: typeof prefs.seed === "string" ? prefs.seed.slice(0, 32) : "834271",   // 曲ごとの設定がない曲の初期値
   bpm: num(prefs.bpm, 60, 300, 138),
   offset: num(prefs.offset, -5000, 5000, 0),
@@ -336,6 +386,8 @@ const settings = {
   libKeepShared: prefs.libKeepShared === true,                                // 📤💾 共有で取り込んだ曲を端末に残す（初期オフ。library.js）
   trkPlaylist: prefs.trkPlaylist !== false,                               // 🐔 trk's playlist（右端のタブ。チュートリアル後に自動追加。設定で非表示可）
   trkClassic: prefs.trkClassic !== false,                                // 🎻 trk classic（クラシック名盤。ゲームとは別枠で100曲。設定で非表示可）
+  trkListed: cleanTrkRemoved(prefs.trkListed),
+  trkFixedNotice: prefs.trkFixedNotice === 1 ? 1 : 0,
   trkRemoved: cleanTrkRemoved(prefs.trkRemoved),                         // 🗑 消した trk の自動リスト（次の起動で作り直さない。🐔の設定の ♻ で戻す）
   /* 🎓 trk's OST Vol.1（music-library へ分離。trk185〜189）。
      settings は prefs 全体を自動コピーしないので、読み戻す字段はここで明示する。
@@ -617,13 +669,16 @@ function resetAllPrefs() {
   settings.tvParamFavs = []; // a factory reset clears the separately preserved TV bookmarks too
   settings.trkPlaylist = true; // 🐔 trk's playlistも初期状態に戻す（再表示）
   settings.trkClassic = true;  // 🎻 trk classic も初期状態に戻す
+  settings.trkListed = []; settings.trkFixedNotice = 0;
   settings.trkRemoved = [];    // 🗑 消したリストの印も外す（プレイリストごと初期化するため）
-  settings.trkSortABC = false; settings.playlistOrder = []; settings.trkTabName = "full"; settings.chartGen = "3"; settings.mediaKeepLimit = "1g";
+  settings.trkSortABC = false; settings.playlistOrder = []; settings.trkTabName = "full"; settings.chartGen = "4"; settings.chartGenChosen = false; settings.mediaKeepLimit = "1g";
   settings.fxPower = 1.5; settings.gameFxMode = "full"; settings.hideGameplayUI = false; settings.helpText = true; settings.tutorialDone = false; settings.tutorialStamps = []; settings.skinGradUnlocked = false; settings.playlists = []; settings.plFolders = []; settings.playlistDelMode = "one"; settings.plAuthorTools = false; settings.plAuthorName = ""; settings.plAuthorBlock = []; settings.plAuthorFav = []; settings.plAuthorOnly = false; settings.menuKey = "KeyM"; settings.menuConfirm = true; settings.mediaExitKey = "Escape"; settings.mediaExitConfirm = true; settings.errorMeter = true;
   settings.scroll = 1.2; settings.latency = 0;
   settings.catchNitroBonus = true; settings.catchBlastNext = false; settings.mediaRepeat = "off"; settings.mediaShuffle = false; settings.mediaRate = 1; settings.mediaLoopTrigger = "toggle"; settings.videoKeys = VIDEO_KEY_DEFAULTS.slice(); settings.mediaResumeRewind = 0; settings.mediaWakeLock = true; settings.mediaWave = true; settings.libProgress = "all"; settings.mediaLyricsOpen = false;
   settings.judge = "standard"; settings.rate = 1; settings.shortMode = "off"; settings.shortMode = "off";
   settings.hidden = false; settings.sudden = false; settings.modMirror = false; settings.modRandom = false; settings.showMasterDiff = false; settings.escNoReturn = false; settings.judgeOrdered = false; settings.mediaReloadOnExit = false; settings.previousAlwaysTrack = false;
+  settings.favQuickUnfreeze = false;
+  settings.favs = {}; settings.songFav = [];
   settings.mascot = "skin"; settings.vrmFrame = "full";
   settings.mmdScale = 1; settings.mmdTurn = 0; settings.mmdMotionBpm = 0; settings.mmdMotionKind = "faceSing";
   settings.mmdQuickUI = true; settings.mmdMotionFavs = [];
@@ -1422,6 +1477,7 @@ function renderStoragePersist(state) {
         if (hasImported("bgBlur") && typeof data.bgBlur === "number") { settings.bgBlur = clampTvBlur(data.bgBlur); applied.push("bgBlur"); }
         if (hasImported("tvParamFavs")) { settings.tvParamFavs = cleanTvParamFavorites(data.tvParamFavs); applied.push("tvParamFavs"); }
         /* 🗑 trk の消した印は、要素（trk- で始まるID）まで検証してから代入する */
+        if (hasImported("trkListed") && Array.isArray(data.trkListed)) { settings.trkListed = cleanTrkRemoved(data.trkListed); applied.push("trkListed"); }
         if (hasImported("trkRemoved") && Array.isArray(data.trkRemoved)) { settings.trkRemoved = cleanTrkRemoved(data.trkRemoved); applied.push("trkRemoved"); }
         const importedTvDockSkin = hasImported("tvDockSkin") && typeof data.tvDockSkin === "string" && window.TrkTV && typeof window.TrkTV.skins === "function" &&
           window.TrkTV.skins().some(item => item && item.id === data.tvDockSkin) ? data.tvDockSkin : "";
@@ -1443,10 +1499,19 @@ function renderStoragePersist(state) {
           rejectedKeys.add(k);
           rejected.push(tr(SKIP_WHY[why] || SKIP_WHY.unknown, { k }));
         };
+        if (hasImported("songFav") && Array.isArray(data.songFav)) {
+          settings.songFav = cleanSongFav(data.songFav); applied.push("songFav");
+          if (data.songFav.some(k => typeof k !== "string" || !k.trim()) || settings.songFav.length >= 2000 && new Set(data.songFav.filter(k => typeof k === "string" && k.trim()).map(k => k.trim().slice(0, 200))).size > 2000) reject("songFav", "type");
+        }
+        if (hasImported("favs")) {
+          const merged = mergeImportedFavs(settings.favs, data.favs);
+          if (merged.applied.length || !merged.errors.length) { settings.favs = merged.value; applied.push("favs"); }
+          for (const key of merged.errors) reject(key, "type");
+        }
         // 既知キーだけを取り込み、型と列挙IDは代入前に検証する。
         // ⚠ 弾いたキーは黙って捨てない（「読み込みました」なのに反映されない事故を防ぐ）。最後にまとめて報告する。
         for (const k of Object.keys(data)) {
-          if (UNSAFE_KEYS.has(k) || ["notes", "videoStyle", "tvDockSkin", "bgDim", "bgBlur", "tvParamFavs", "trkRemoved", "musicVolume", "musicVolumeRestore"].includes(k) || applied.includes(k)) continue;
+          if (UNSAFE_KEYS.has(k) || ["notes", "videoStyle", "tvDockSkin", "bgDim", "bgBlur", "tvParamFavs", "trkRemoved", "trkListed", "trkFixedNotice", "songFav", "favs", "musicVolume", "musicVolumeRestore"].includes(k) || applied.includes(k)) continue;
           if (!Object.prototype.hasOwnProperty.call(settings, k)) { reject(k, "unknown"); continue; }
           const current = settings[k], incoming = data[k];
           const sameShape = Array.isArray(current) ? Array.isArray(incoming)

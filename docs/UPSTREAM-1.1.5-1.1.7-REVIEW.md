@@ -1,0 +1,22 @@
+# PC版 trk 1.1.5〜1.1.7 のAPK向け検討
+
+2026-10-29。対象は [1.1.5 Drive資料](https://drive.google.com/drive/folders/1j9mIFWIW5m7ZQSwXiy2OaqviT7JiXghw)、[1.1.6](https://drive.google.com/drive/folders/1S01wbrKXkGBqGPgQ7wx9PvQaHXugAada)、[1.1.7](https://drive.google.com/drive/folders/1dRkTvLFzV_q3eqaFY5UD6bbze8IkErjW) の説明・コード／文書差分と、対応する上流コミット。APK基準はPR #8の `cc244e2`。配布ZIPはPC用でAPKではない。差分はAPKの独自改修にそのまま当てない。
+
+| PC版 | 内容 | APKでの方針 |
+| --- | --- | --- |
+| 1.1.5 / trk215 | お気に入りの4フォルダ、保存、ピンと凍結、3秒長押し解除、謎設定、4言語 | 統合。既存の音声安全・ナビは維持。新規の凍結フォルダは最初は未凍結、保存済みロックは尊重。物理タッチは未検証。 |
+| 1.1.5 / trk216 | 譜面生成の既定をB（方式4）、選択の記録、表記 | 新規・無効値と全設定初期化はB。**旧APKで保存済みの1〜4はすべて維持**。旧版には明示選択の印がなく、上流の「印なしはB」では旧方式1・2やAを意図して選んだ人も変更され得るため。方式は設定で変更可能。実ゲームの感触・記録との互換は実機要確認。 |
+| 1.1.6 / trk217 | 起動時一括作成をやめ個別選択、24文字ID・Vol分割・棚、空のカタログ除外、既存リストの移行・更新 | APKには個別選択・空のカタログ除外・ID／分割・削除後の再追加が既にある。新規は🐔直下を維持し棚の自動作成は増やさない。PCの既存リスト自動更新はAPKの「編集済みリストを上書きしない」方針と競合するため丸ごと移植しない。旧データの移行と、複数Volの既存cat照合は要個別設計・検査。 |
+| 1.1.7 / trk218 | 曲プロフィールの一覧でtrk製を初期非表示、表示切替と編集可能なコピー、既存利用者への案内 | 統合。表示切替は削除ではない。コピーはカタログとの紐付けを外し、APKではフォルダ移動等を妨げないため通常の棚に作成。手持ちの元リストや音源は変更しない。4言語。 |
+
+## 確認と残課題
+
+- 元の案内ではPCのピッカー／👁・🗑・📋の実ブラウザー操作は未確認。APKでも実タッチ・アクセシビリティ、狭い画面、設定バックアップの往復を実機で確認する。
+- お気に入りの保存・旧設定の引き継ぎ、フォルダ移動、ピン・凍結、長押し途中の画面退避、再起動を確認する。仮想DOM／模擬は実機ではない。
+- trkの既存リストに対するPCの自動更新・移行は、APKでは利用者の編集を守るため未導入。安全な差分判定、複数Volと古いID、棚の上限・既存データを対象に設計・テストしてから判断する。
+- Media3サービス・Audio Focus・SAF・物理Bluetoothの検証は本作業の範囲外で、引き続き未実施。[HANDOFF](HANDOFF.md) と [実機チェック表](ANDROID-DEVICE-CHECKS.md) を参照。
+
+## 検証結果
+
+- `f008412` で `npm run check` 809件成功、`npm run cap:sync`・差分チェック成功。[debug APK CI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070392) 成功。成果物はActionsの保存期限とdebug署名に注意。
+- [API 35 エミュレーター](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40832070333) でWebView内のお気に入り2軍・ピン・凍結と譜面方式の保存、Activity再生成後の復元を確認。JS操作であり、物理タッチ・音声・ゲームプレイ・Bluetoothは検査していない。

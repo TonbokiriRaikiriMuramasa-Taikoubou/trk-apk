@@ -27,6 +27,8 @@
 .apk-shell .libTools input { grid-column:1 / -1; min-width:0; }
 .apk-shell #libList { height:auto; max-height:none; overflow:visible; }
 .apk-shell .libRow { min-height:52px; }
+/* Mobile touch targets for folder selection and freeze/unfreeze. */
+.apk-shell .favChip, .apk-shell .favLock { min-width:48px; min-height:48px; }
 .apk-shell #selectScreen .screen h2 { font-size:inherit; }
 .apk-shell .grid { grid-template-columns:1fr; }
 .apk-shell .fields { grid-template-columns:repeat(3,minmax(0,1fr)); }

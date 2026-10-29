@@ -1350,6 +1350,8 @@ body.plDragging .libTab[data-pl]{outline:1px dashed var(--ui-border);outline-off
 .plTrkList{display:flex;flex-direction:column;gap:6px}
 .plTrkRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .plTrkRow>span{flex:1;min-width:120px}
+/* 🐔 trk218：曲画面の一覧に出していない（🗑 で隠した）リストの 👁 は控えめに */
+.plTrkRow .plTrkHidden{opacity:.6}
 .plTrkGroup{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .plTrkTitle{background:none;border:0;padding:0;font:inherit;font-weight:700;color:inherit;cursor:pointer;text-align:left}
 .plTrkTitle:hover{text-decoration:underline}
@@ -1717,6 +1719,14 @@ body.plDragging .libTab[data-pl]{outline:1px dashed var(--ui-border);outline-off
 .favLock{padding:6px 10px;font-size:13px;border-radius:999px;background:var(--ui-field);color:var(--ui-text);
   border:1px solid var(--ui-border);cursor:pointer}
 .favLock.on{background:#4a6ea8;color:#fff;border-color:transparent}
+/* 🔒 trk215：凍結の解除は3秒長押し。押している間、下に3秒ぶんのバーが出る（残りが見える） */
+.favLock,.favChip{position:relative;overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none}
+.favLock.favHold,.favChip.favHold{touch-action:none;-webkit-user-select:none;user-select:none}
+.favLock.holding::after,.favChip.holding::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;
+  background:var(--ui-accent);animation:favHoldBar 3s linear forwards}
+@keyframes favHoldBar{from{width:0}to{width:100%}}
+.favPinN{display:inline-flex;align-items:center;padding:5px 9px;font-size:12px;border-radius:999px;
+  background:transparent;color:var(--ui-text);border:1px dashed var(--ui-border);opacity:.9}
 .favMenu{position:fixed;z-index:60;min-width:210px;max-width:min(320px,90vw);padding:6px;border-radius:14px;
   background:var(--ui-panel,rgba(20,20,24,.97));color:var(--ui-text);border:1px solid var(--ui-border);
   box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:2px}

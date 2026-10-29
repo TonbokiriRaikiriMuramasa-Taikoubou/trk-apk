@@ -1,100 +1,58 @@
 # trk! Android版 開発引き継ぎ
 
-最終整理：2026-10-29。**開発途中のAndroid版であり、実機未検証です。** GitHub Actionsでdebug APKのビルドは成功していますが、正式配布版ではありません。画中絵・裏再生・取り込み等は、OSや端末によって動作しない可能性があります。
+最終整理：2026-10-29。**開発途中・物理Android実機未検証。** エミュレーターとdebug APKビルドの成功は、実機・実音声・Bluetooth・正式配布の合格ではない。現行の概要はここ、個々の根拠や古い履歴はリンク先を参照。
 
-## 1. 現在地と資料
+## 現在地
 
-**進捗の早見表：** M0ビルド基盤は整備済み、M1実機スモークは未着手、M2安定化は試作・継続中、M3 Media3は設計段階、M4 SAF／共有とM5正式配布は未実施。段階ごとの成果・検証範囲・次の優先順位は [進捗整理](PROGRESS-2026-10-29.md) を参照。マージやDriveへの掲載は音声・Bluetoothの実機合格を意味しない。
+| 段階 | 状況 |
+| --- | --- |
+| M0 ビルド基盤 | Capacitor 8、debug APKとAPI 35エミュレーターCIを整備 |
+| M1 実機スモーク | 未実施。まず [実機チェック表](ANDROID-DEVICE-CHECKS.md) |
+| M2 安定化 | 安全対策・回帰試験を継続。音声経路とOSライフサイクルは実機要確認 |
+| M3 Media3・イヤホン | 設計・テスト専用実験のみ。製品Bridge／MediaSessionService／Audio Focus未実装 |
+| M4 取り込み・共有 | ネイティブSAF永続フォルダ、MediaStore自動取得、Android共有受信は未実装 |
+| M5 正式配布 | 未実施。配布用署名鍵・正式ID・権利確認・実機確認が必要 |
 
-- このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` の `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基にしたCapacitor 8のAndroid版。Drive上の1.1.4 ZIPとのバイト一致は未確認。
-- 仮アプリID `com.trk.agrg`、開発版 `0.1.0-dev`、minSdk 24、target／compileSdk 36。ゲーム機能・Web再生・書斎などを引き継ぐが、Androidでの動作は機能ごとに確認する。
-- **仕様の固定記録**：[APK-SPEC-2026-10-29.md](APK-SPEC-2026-10-29.md) は `9c53d5c` 時点の上流との差分と未検証・今後の方針をまとめたもの。[同一ファイルのDrive版](https://drive.google.com/file/d/1JwyQL83Hz55Qnl1vP01QSqUuWjNtoMbU/view)のSHA-256は `57dcf085bf026278fb74ab811cf08913717d9388f995ff4806dcb7aac08e7081`。以降の仕様変更は本HANDOFFと新しい記録を優先する。
-- **これから行える作業**：[優先順位付き作業一覧](NEXT-ACTIONS-2026-10-29.md)。端末なしで進める対策、実機が必要な確認、利用者の判断待ちを区別する。Media3段階Aの通信・競合・状態の[設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)とテスト専用の偽Bridge／偽Playerモデルと、`androidTestImplementation` 限定でMedia3 `SimpleBasePlayer` とテスト用MediaSessionの状態を調べる検査を追加した。製品アプリのMedia3サービスや実通信はまだ実装していない。
-- 詳細：[Android設計](apk-development.md)／[実機チェック表](ANDROID-DEVICE-CHECKS.md)／[Media3計画](media3-plan.md)／[Media3導入前レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)／[段階的開発の判断](decisions/0001-android-milestones.md)／[開発作業の承認範囲](decisions/0002-development-authorization.md)／[安全性](SECURITY.md)／[品質検査](QUALITY-CHECKS.md)。上流の引き継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、古い経緯は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。
-- 以前のDriveフォルダ `trk-apk-0.1.0-dev-2026-10-29` は古い開発ソースでLat式モデルを含む。後の `trk-apk-review-source-plan-2026-10-29` はPR #2時点であり、今回の変更や実機結果を含まない。いずれも自動更新していない。
+リポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。基礎は上流 `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）、その後にPC版1.1.5〜1.1.7の一部をAPK向けに統合。Drive ZIPとのバイト一致は未確認。[PC版との差分](UPSTREAM-1.1.5-1.1.7-REVIEW.md) と [レビュー後の対応](UPSTREAM-REVIEW-FOLLOWUP-2026-10-29.md) に採否・検証・未確認を記録。アプリID `com.trk.agrg` は仮、`versionCode 1`／`0.1.0-dev`、minSdk 24／target・compileSdk 36。
 
-## 2. 実装済みの方針・制約
+## 機能と重要な制限
 
-### UI・ゲーム
+- 下部ナビはライブラリ／エフェクト／再生／書斎／ゲーム。ゲーム準備やスペクトラムは通常画面から格納し、プレイヤーから選曲中の曲でゲームへ。実ゲーム・狭画面は未検証。
+- シンセ初期OFF（既存保存は維持）、設定欄は初回閉じて開閉を端末に記録。trk's playlistは設定から個別追加し、音源は含まない。既存カタログ自動更新は利用者編集の保護との両立が未決で保留。
+- お気に入り4フォルダ・ピン・凍結を保存。解除は既定3秒長押し、謎設定でワンタップに変更可能。部分設定バックアップはfavsの種類・項目単位で欠落値を保護し、不正部分を報告する。実際のPCバックアップとの往復は未検証。譜面方式は新規・初期化時B、保存済み1〜4は維持。trkリスト表示切替と編集可能コピーを統合。
+- 通常の画面向きは端末設定に従う。右下ボタンで一時固定／解除し、10秒長押しで緊急復帰を確認する。ゲーム向き・緊急復帰の操作感は実機要確認。
+- アンテナOFFは背景で一時停止、ONは再生継続を試みる。PiPは初期OFF・既定で動画のみ。OSによる停止や復帰順序の実機検証は必要。無音で再生を進める案は保留。
+- 「前へ」は既定で3秒超なら現在曲先頭、3秒以内は前曲。謎設定で常に前曲へ変更可能。ゲーム中は譜面同期保護のため既存の曲送りを維持。
+- イヤホン切断時の音声停止・再開抑止、FX復旧失敗時の安全側ロックと警告、renderer終了後の復旧を試作。モック／エミュレーターの結果は実際の切断や出力抑止を保証しない。詳細は [Media3導入前レビュー対応](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md)。
+- ファイル選択・フォルダ再接続・IndexedDB容量は実機未検証。Android自動バックアップ・端末間転送には除外ルールを設定したがメーカー固有の挙動は未検証。全設定書き出しは完全バックアップではない。
+- Lat式ミクのモデルは同梱せず[作者の配布先](https://bowlroll.net/file/30199)を案内。持ち込みと内蔵モーションは維持し、65種をすべて選択可能。🎤 歌・口パクの6グループを含む。描画・互換性は未保証。`BELIEVE.ogg` 等の外部音源は同梱しない。FIRST SPARKは任意デモ。古い履歴・Driveの古い成果物にはLatモデルを含むものがある。
 
-- 下部ナビは **ライブラリ／エフェクト／再生／書斎／ゲーム**。取り込み口と右側のゲーム準備・スペクトラムは通常画面から格納。再生を維持してエフェクトを操作し、選択曲からゲーム準備へ進む導線は仮置き。詳細設定を開く際はプレイヤーを閉じる。
-- シンセは新規・音声設定初期化時OFF（既存保存設定は尊重）。設定欄は初回閉じ、手動開閉を `trk_apk_settings_panels_v1` に保存。検索の一時開閉は保存せず、開閉状態は設定バックアップ対象外・全設定リセットで削除。
-- 🐔trk's playlistは自動一括追加せず、設定のカタログから個別に追加。既存の編集は上書きしない。カタログ自体は音源を含まない。
-- Android Backは既知の全画面・確認・書斎・設定・プレイヤー・ゲームを段階的に戻し、未知のモーダルは安全側で消費。予測型戻るや各画面は実機要確認。
-- 画面向きは通常は端末設定。右下ボタンで一時固定／解除、10秒長押しで緊急復帰を確認する。ゲーム中／一時停止／結果・モーダル・書斎では非表示。長押しと、ゲーム中の黒画面から戻る経由の復帰は実機未検証。ゲーム向きは実機評価後に決める。
+## ビルド・配布
 
-### 再生・PiP
-
-- Media3導入前レビューの対応は [レビュー対応記録](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md) を参照。非表示イベントの伝播を維持して押下操作を解除し、逆再生のMedia Session状態を同期した。renderer終了時はネイティブの復旧画面を表示し、明示的な画面再起動後も再生開始操作まで自動再生を抑止する試作を追加した。OS・実機の安定性、データ保持、再生経路は未検証。イヤホン切断はAndroidのnoisy通知を受けて停止・自動再開抑止を試みる暫定対策を追加したが、音声経路・通知配送・物理端末でのスピーカー再生防止は保証できない。
-- 出力切断時のシンセは、押鍵中だけでなく離鍵済みのリリース余韻も追跡して即時切断するよう修正。通常の離鍵・画面退避のリリースは維持。モック音声ノードと実スクリプトのイベント連携を検査したが、実音声・物理出力の切替は未確認。タイミング測定の最大20個・約10秒先までの予定音も、切断時に取り消し測定を中止する。ゲームのヒットSE・カウント・失敗／CATCH音もsourceと出力を追跡し、切断時に停止・disconnect、明示再開前の自動発音を抑止する。SE試聴ボタンの実際の操作は、曲の再生ガードを解除せず新しい試聴だけを許す。FXは独立した最終出力を切断し、アドオン由来のFX経由メディアも停止。明示再開時はEQ・ゲーム連動・リミッターとプリセット／追加ミックス経路を作り直して残響を破棄し、設定を維持して出力を戻す。再構築失敗時はFXを無音側に残し、再生ガードを再設定して再生を停止。画面に再生操作での再試行と、繰り返す場合のデータ保存・アプリ再起動を案内する。成功するまで自動的に再生を始めず、エラーをログに記録する。画面表示や再試行の実機確認は未実施。偽AudioNodeでの検査のみであり、実broadcast・実音声・物理端末やすべてのアドオン音声は未検証。
-- タイトル右上のアンテナOFFは裏画面で一時停止、ONは継続を試みる。WebView再生にはOS・省電力・ロック等による中断の可能性があり、継続を保証できない。ゲーム中は記録保護を優先。
-- プレイヤー内の自動画中絵は初期OFF。ON時は動画のみが既定で、音楽も含める選択肢あり。ゲーム中は対象外。動画の枠比率は動画寸法をAndroidの範囲に丸め、音楽・寸法不明は16:9。専用のPiP再生／停止ボタンは未実装。PiP移行や動画表示は実機未検証。
-- PiP移行の1.5秒フォールバックは、前景復帰・PiP開始・次の移行で古いタイマーを無効化する。未稼働時の重複したPiP終了通知はアンテナONの背景再生を停止しない。PiPが稼働中から終了し、その時点で非表示なら停止する。OSの通知順序は実機未確認。
-- 「前へ」は既定で位置が3秒を超えたら現在曲の先頭、3秒以内なら前曲へ。❓謎設定「前へボタンは常に前曲へ移る」は既定オフで保存される。プレイヤー・バナー・TV・Web Media Sessionに適用し、ゲーム中は譜面同期を保つため既存の曲送りを維持。実機・物理イヤホンは未検証。
-- Androidで非表示・アンテナOFF・PiP非稼働の間、Web Media Sessionの再生／前後曲命令は受け付けず、停止／シークは受け付ける。読み込み途中で背景に移った場合も、対象の自動再生・プレビュー・リピートを抑止する。前景、アンテナON、実際に稼働中のPiPでは許可する。非同期の全再生経路やOSからの操作は実機未検証。
-- 逆再生中のMedia Session一時停止は通常再生へ切り替えず停止する。非同期準備中の停止・新しい逆再生に対し古い準備が音を出さないよう無効化する。Androidで背景再生が許されない場合、またはPiP終了後に背景再生が許されなくなった場合の逆再生も停止する。音声・実機確認は未実施。
-- PiP設定 `trk_apk_pip_mode_v1`／`trk_apk_pip_audio_v1` は端末内に保存し、設定バックアップには含まれず全設定リセットで削除。
-- Media3、ネイティブMediaSessionService、Audio Focus統合は**未実装**。Web Media Sessionのplay/pauseを冪等化し、プレイヤーを閉じた後もシーク・速度等による位置の変更と現在曲のタグをイベントで反映する。曲切替／読込中は旧曲の位置をクリアする。Activity表示中の音量キーは `STREAM_MUSIC` に関連付けたが、通知・ロック画面・Bluetoothでの反映や逆再生中の位置は未検証。Shokz OpenRun Pro 2の音量＋／－と多機能ボタン1／2／3回は対応目標。
-- 無音のまま再生を進める「謎設定」は保留。MIDI／Web Audioを含む消音と元の状態の復帰を設計・検証してから判断する。
-
-### データ・権利
-
-- AndroidはService Workerを新規登録せず、旧同スコープWorkerとバージョン別シェルキャッシュだけを整理。共有インボックスや利用者データは消さず、Web／PWAのSWは維持。
-- 自動バックアップ無効に加え、Android 12以降のクラウド／端末間転送の対象ドメインを除外するルールを設定。OS・メーカー製移行ツールでの動作は実機未確認。必要なデータは機種変更前に明示的にバックアップする。FileProvider外部領域はアプリ固有Picturesに限定。
-- 現在の取り込みUIは残す。OS共有インテント受信、ネイティブSAF／MediaStore、永続フォルダ権限は未実装。WebViewのファイル選択・フォルダ再接続・IndexedDB容量は実機未検証。`INTERNET` 権限は現状維持。
-- Lat式ミクのモデル・テクスチャは現行ソースとAPK生成物に同梱せず、[作者の配布先](https://bowlroll.net/file/30199)を案内。持ち込みと内蔵モーションは維持し、65種をすべて選択可能。🎤 歌・口パクの6グループも含む。テストfixtureはLat Ver2.31の骨・モーフ名のみで、現行モデルとの互換性・描画は保証しない。`BELIEVE.ogg` 等の外部音源は同梱しない。古いGit履歴・Drive配布物にはモデルが残る。
-- 初音ミク二次創作や東方素材は残る。個人・非営利でも採用物ごとの利用・改変・再配布・クレジット・NOTICE・ストア条件を確認する。署名鍵をGitに入れない。権利は [NOTICE.md](../NOTICE.md) も参照。
-
-## 3. ビルドと検証
-
-Node.js 22以上、npm、JDK 21、Android SDK 36が必要。SDK・Gradle依存の取得には通信が必要。
+Node.js 22以上、JDK 21、Android SDK 36が必要。詳細は [開発ガイド](apk-development.md)、利用者のdebug APK入手は [README](../README.md)、正式署名・ソース・権利の手順と未完了項目は [APK配布準備](APK-DISTRIBUTION.md)。署名鍵をGitやチャットに入れない。
 
 ```sh
 npm ci
-# 固定vendorの build / dist が欠けている場合のみ復元
-npm run vendor:update
+# vendorのbuild / distが欠けている場合のみ npm run vendor:update
 npm run check
 npm run cap:sync
-npm run cap:open:android
-# または SDK と JDK を設定後
 cd android && ./gradlew assembleDebug
 ```
 
-`android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
+`android/` は生成済みのため `cap:add:android` を再実行しない。`cap:sync` がGit管理外の `mobile-web/` とAndroid内のWeb資産を生成する。debug APKは `android/app/build/outputs/apk/debug/app-debug.apk`。Actions成果物は7日保存、署名鍵がビルドごとに異なることがあり、再インストールでデータを失うおそれがある。`npm run check` は `tools/check-security.mjs` を含む。品質と権利は [QUALITY-CHECKS.md](QUALITY-CHECKS.md)、[SECURITY.md](SECURITY.md)、[NOTICE.md](../NOTICE.md) も確認。
 
-- `npm run check`：**776件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
-- 今回の「前へ」追加を含む `1fa96b1` は[debug APK CI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364524)と[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40827364484)で成功。WebView上で設定の保存・復元と偽の再生位置による動作を確認したが、実音声・物理操作・Bluetoothは未検証。
-- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318767)：FX復旧保護・Media3テスト専用モデルと計測テストを含む `4d87377` で成功。モデルと計測テストはアプリに組み込まれない。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
-- [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
-- [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
-- [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40781914878)（`4e09306`）で `chrome://crash` によりrendererを2回終了し、その都度の復旧画面・手動再起動・テスト用localStorageの保持・再生抑止を確認。noisy通知もpluginから模擬したが、OSの実際のイヤホン切断や音声出力は再現していない。PiP中の異常終了、強制終了、実機・他OSは未検証。
-- [API 35エミュレーター追加検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40782607596)（`bdb6807`）で復旧画面の背景→前景と、復旧後のActivity再生成時の保護も確認。この検査は後続のシンセ・測定音・ゲームSE・FX残響停止を実音声で検査していない。
-- [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40810902152)（`e45ae8e`）では、実WebViewでFX再構築の例外を注入し、模擬noisy通知後の警告表示、再生ガード、再試行と設定維持を確認した。実broadcast・物理切断・実音声・タッチではない。
-- [Media3契約のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40815605797)（`5e0702a`）で、テストAPK限定の `media3-common:1.11.1` のplaceholder、優先停止後の古い応答、複数Future取消中の同期再入を確認。再入時には古い表示を読める反例があり、方式は未確定。製品debug runtime依存グラフへのMedia3混入はない。サービス・実通信・音声・Bluetoothは試験していない。
-- [Media3共有FutureのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）で、複数命令の共有保留は途中の状態表示を遅延させ、先行登録リスナーから古い再生状態を読める反例も残ることを確認。採用は未決定。途中の[CI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)は原因未特定で、後続再検査は成功。
-- [Media3意図同期案のAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）では、pause直後に `isPlaying=false` でも偽の遠隔再生主体が再生中であり得る反例を確認。Futureを即完了するAPI契約や各状態の意味・通知との適合も未確定で、採用しない。
-- [テスト専用MediaSessionのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119109)（`20073cf`）で、偽再生主体が再生中でもMedia3側は非再生、Android側はpauseと受け取るケースを確認。通知UI・Bluetooth・実音声は未検査。[最初のCI失敗](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)は原因未特定で、再検査成功は再発しない保証ではない。
-- [模擬メディアキーのAPI 35検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40825318738)（`4d87377`）で前・次・再生／一時停止を偽Playerへ配送。通常previousは曲の途中では現曲先頭へ戻り得る一方、previous-media-itemのみを有効にした条件では前曲へ移った。既存trkの選曲や物理Bluetoothは未検証。
-- **Android実機試験は未実施。** 機種・OS・APKコミットを記録し、[チェック表](ANDROID-DEVICE-CHECKS.md)で検証する。JS・エミュレーター・ビルド成功を実機合格に置き換えない。
-- 開発用Capacitor CLIの `xcode` → `uuid` にmoderateのnpm audit指摘（2026-10-28）。本番依存のみの監査は0件。更新の互換性を別途検討。
+## 確認済みの範囲
 
-## 4. 次の作業と未決事項
+- `344ed24`：`npm run check` は811件／41スイート、`cap:sync` 成功。[debug APK](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40838382914) と [API 35エミュレーター](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40838382902) 成功。実WebViewにAndroid入力コマンドを送った短押し・3.5秒固定座標長押しは成功、物理タッチではない。
+- `94a9e24`：[debug APK build](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40838954037) 成功。Actions成果物は期限付きで、正式配布用ではない。
+- Media3実ライブラリの検査は `androidTestImplementation` のみ。偽Player・偽再生主体による状態不一致や再入の反例があり、方式は未決。通知UI・実Bluetooth・実音声は未検証。[段階Aの設計](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)、[計画](media3-plan.md)を参照。
+- 以前のCI結果・失敗と未解決事項は [整理前の履歴](HANDOFF-2026-10-29-HISTORY.md)、[進捗](PROGRESS-2026-10-29.md) を参照。jsdom／モック／入力注入は実機評価の代わりではない。
 
-[レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)への回答を精査し、実装修正・実機確認・保留項目を[対応記録](MEDIA3-REVIEW-FOLLOWUP-2026-10-29.md)に切り分けた。具体的な進め方と完了条件は[作業一覧](NEXT-ACTIONS-2026-10-29.md)を参照。実機を待つ間も、イヤホン切断とrenderer終了復旧の試作について、競合・OSライフサイクル・音声・データ保持を検証する。どちらも最善努力であり物理端末では未検証。次のマイルストーンは以下のとおり。
+## 次の作業
 
-1. **M1 実機スモーク（優先）**：まずアンテナON／OFFとPiPの組合せ、ホーム移動・素早い復帰と再移動、PiPからの復帰／終了を[チェック表](ANDROID-DEVICE-CHECKS.md)に沿って確認。取り込み・再接続、再生／FX、5ゲームモード、書斎、戻る、向き・緊急復帰、ロックと音声出力も順次記録する。M1は未完了。
-2. **M2 安定化**：実機がない間も再現可能な回帰テストやエミュレーター検査を追加し、上記CI失敗の再発を観察する。実機で見つかった不具合・遅延やタップ校正は実測して対応。未知のモーダルで任意のボタンを押すBack処理は、削除や承認の誤発火を防ぐため保留。
-3. **M3 Media3・イヤホン**：実機検証と並行して既存WebViewのFX・解析・譜面同期を保つ橋渡し案を具体化し、再生状態・キュー・操作の同期、Audio Focusやライフサイクルを整理する。WebViewが停止すれば橋渡しだけでは継続できない。必要な場合のみFXなし聴取専用ExoPlayerを検討。詳細・ライセンス・Shokz試験は [media3-plan.md](media3-plan.md)。
-4. **M4 取り込み**：SAFと共有インテント、永続URI、動画の範囲アクセスとシーク、権限喪失時の再接続を設計・検証。
-5. **M5 配布**：署名鍵の管理、GPL対応ソース、各素材・依存物の条件、配布先を確認。正式appId、ゲーム画面の向き、東方なしビルド、プロセス終了後の自動再開、同梱docs削減は未決。
+1. 物理端末で上記の取り込み、再生・FX、ゲーム、書斎、タッチ、音声出力、PiP・回転・Back、データ保全を [チェック表](ANDROID-DEVICE-CHECKS.md) に沿って記録。
+2. [Media3計画](media3-plan.md)と[段階Aの設計](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)に従い、既存Web Audio・FX・譜面同期を守る橋渡し、割込み・状態競合を検討。物理Shokz等のメディア操作は未検証。
+3. SAF・共有と再接続、既存カタログ更新時の利用者編集保護、バックアップ往復、韓国語を含む翻訳の母語レビューを検討。
+4. 正式配布前に [APK配布準備](APK-DISTRIBUTION.md) の署名・ID・バージョン・ライセンス・利用条件・配布先を確認。無料・非営利でも第三者の条件確認は必要。
 
-## 5. 主なファイル
-
-| 場所 | 役割 |
-| --- | --- |
-| `index.html`, `css/apk-mobile.css`, `js/apk-mobile.js` | Android画面、5ナビ、エフェクト導線、向きと緊急復帰のUI |
-| `js/apk-native.js`, `js/apk-background.js`, `android/app/src/main/java/com/trk/agrg/` | Back・SW整理、PiP・向きのネイティブ試作 |
-| `js/media-player-mode.js`, `js/fx-dock.js`, `js/library.js`, `js/media.js` | Web再生・Media Session・アンテナ・キュー・エフェクト |
-| `js/apk-settings-panels.js`, `js/synth-mode.js`, `js/core.js` | 設定の開閉、シンセ初期値と保存 |
-| `android/`, `capacitor.config.ts`, `tools/prepare-mobile-web.mjs` | AndroidシェルとWeb資産の同期 |
-| `.github/workflows/`, `tests/apk-*.test.mjs`, `android/app/src/androidTest/` | debugビルド、JS回帰・エミュレーター検査 |
+詳細な優先順位は [NEXT-ACTIONS](NEXT-ACTIONS-2026-10-29.md)。仕様の過去記録は [APK-SPEC](APK-SPEC-2026-10-29.md)、上流の引継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、更に古い経緯は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。

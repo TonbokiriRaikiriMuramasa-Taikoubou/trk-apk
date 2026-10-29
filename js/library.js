@@ -707,6 +707,7 @@ Object.assign(TEXT.ja, {
   libTabAll:"すべて", libTabFiles:"追加した曲", libTabKept:"保存棚", libTabVerified:"公認", libTabPackNone:"曲パック", libTabFolderTop:"フォルダ（直下）", libTabAddon:"アドオン", libTabDemo:"デモ曲",
   srcBuiltin:"trk! 同梱デモ",
   libTabGo:"この棚に {n}曲", libTabEmpty:"このタブには曲がありません。ほかのタブを見てみてください。",
+  libFavEmpty:"このフォルダは空です。上の ⭐1軍／⭐2軍／🧊フリーズ／📤元お気に入り で切り替えるか、曲の ☆ でこのフォルダに入れられます。",
   libTabAlbums:"アルバム", libTabArtists:"アーティスト", libNoTagsGroup:"タグなし", libGroupCount:"{n}曲", libGroupTagsLoading:"🏷 タグを読み込み中…（読み終わると並べ直します）",
   libTabSmart:"スマート", libSmartRecent:"🕒 最近再生", libSmartTop:"🔥 よく再生", libSmartAdded:"➕ 最近追加"
 });
@@ -714,6 +715,7 @@ Object.assign(TEXT.en, {
   libTabAll:"All", libTabFiles:"Added", libTabKept:"Saved shelf", libTabVerified:"Verified", libTabPackNone:"Song pack", libTabFolderTop:"Folder (top level)", libTabAddon:"Add-on", libTabDemo:"Demo track",
   srcBuiltin:"Bundled trk! demo",
   libTabGo:"{n} songs in this shelf", libTabEmpty:"No songs in this tab. Try another tab.",
+  libFavEmpty:"This folder is empty. Switch with the ⭐1st / ⭐2nd / 🧊Frozen / 📤Former chips above, or press ☆ on a song to add it here.",
   libTabAlbums:"Albums", libTabArtists:"Artists", libNoTagsGroup:"No tags", libGroupCount:"{n} songs", libGroupTagsLoading:"🏷 Reading tags… (the list re-sorts when they arrive)",
   libTabSmart:"Smart", libSmartRecent:"🕒 Recently played", libSmartTop:"🔥 Most played", libSmartAdded:"➕ Recently added"
 });
@@ -721,6 +723,7 @@ Object.assign(TEXT.zh, {
   libTabAll:"全部", libTabFiles:"已添加", libTabKept:"已保存", libTabVerified:"认证", libTabPackNone:"歌曲包", libTabFolderTop:"文件夹（顶层）", libTabAddon:"插件", libTabDemo:"演示曲",
   srcBuiltin:"trk! 内置演示曲",
   libTabGo:"这个架子有 {n} 首", libTabEmpty:"此标签内没有歌曲。请看看其他标签。",
+  libFavEmpty:"此文件夹为空。请用上方的 ⭐一军／⭐二军／🧊冻结／📤原收藏 切换，或点歌曲的 ☆ 加入此文件夹。",
   libTabAlbums:"专辑", libTabArtists:"艺术家", libNoTagsGroup:"无标签", libGroupCount:"{n} 首", libGroupTagsLoading:"🏷 正在读取标签…（读完后会重新排序）",
   libTabSmart:"智能", libSmartRecent:"🕒 最近播放", libSmartTop:"🔥 常播放", libSmartAdded:"➕ 最近添加"
 });
@@ -728,6 +731,7 @@ Object.assign(TEXT.ko, {
   libTabAll:"전체", libTabFiles:"추가한 곡", libTabKept:"저장 선반", libTabVerified:"공인", libTabPackNone:"곡 팩", libTabFolderTop:"폴더 (최상위)", libTabAddon:"애드온", libTabDemo:"데모 곡",
   srcBuiltin:"trk! 내장 데모",
   libTabGo:"이 선반에 {n}곡", libTabEmpty:"이 탭에는 곡이 없습니다. 다른 탭을 봐 주세요.",
+  libFavEmpty:"이 폴더는 비어 있습니다. 위의 ⭐1군／⭐2군／🧊동결／📤원래 즐겨찾기로 바꾸거나, 곡의 ☆로 이 폴더에 넣을 수 있습니다.",
   libTabAlbums:"앨범", libTabArtists:"아티스트", libNoTagsGroup:"태그 없음", libGroupCount:"{n}곡", libGroupTagsLoading:"🏷 태그 읽는 중…(다 읽으면 다시 정렬합니다)",
   libTabSmart:"스마트", libSmartRecent:"🕒 최근 재생", libSmartTop:"🔥 자주 재생", libSmartAdded:"➕ 최근 추가"
 });
@@ -961,6 +965,13 @@ Object.assign(TEXT.ja, {
   trkOpen:"🐔 開く", trkAdded:"🐔 trk's playlist を追加しました（{n}曲）— 右端のタブをどうぞ",
   trkDup:"🐔 trk's playlist はすでに入っています", trkShow:"🐔 trk's playlist を表示", trkHide:"🐔 trk's playlist を非表示",
   trkPanelTitle:"🐔 trk's playlist", trkPanelHint:"選択したリストを🐔の中に追加します（非営利・音源なし）。",
+  trkListShow:"👁 曲画面の一覧に出す", trkListHide:"🗑 曲画面の一覧から隠す",
+  trkListShown:"👁 {name} を曲画面の一覧に出しました", trkListHidden:"🗑 {name} を曲画面の一覧から隠しました",
+  trkListNote:"🗑 は曲画面の「プレイリストに入れる」から隠すだけです（リストは消えません）。📋 は中身をそのままに、編集できるコピーを作ります。",
+  trkCopyBtn:"📋 編集できるコピーを作る", trkCopyDone:"📋 編集できるコピーを作りました：{name}",
+  trkCopyFail:"プレイリストは{n}本までです。使っていないものを消すと作れます", trkCopySuffix:"（コピー）",
+  plInListsHidden:"🐔 trk が追加したリスト（{n}件）は、⚙ 設定 → 🐔 trk's playlist の 👁 でこの一覧に出せます。",
+  trkFixedNotice:"🐔 trk のリストは、曲画面の「プレイリストに入れる」に出さなくなりました。編集したいときは ⚙ → 🐔 trk's playlist の 📋 でコピーを作れます。",
   trkCatalogBtn:"🐔 trk's playlist", trkCatalogTitle:"🐔 trk's playlist（非営利の紹介プレイリスト）",
   trkCatalogHint:"最初の10曲はSAM Free Music — 100% Orange Juice! で出会える曲です。東方・ブルアカ・アークナイツも収録！音源は同梱しません。（著作権は放棄されていません）",
   trkTab:"🐔 trk's playlist",
@@ -1012,6 +1023,13 @@ Object.assign(TEXT.en, {
   trkOpen:"🐔 Open", trkAdded:"Added 🐔 trk's playlist ({n} songs) — find it at the far right",
   trkDup:"🐔 trk's playlist is already there", trkShow:"Show 🐔 trk's playlist", trkHide:"Hide 🐔 trk's playlist",
   trkPanelTitle:"🐔 trk's playlist", trkPanelHint:"Selected lists appear under 🐔 (non-commercial, no audio).",
+  trkListShow:"👁 Show in the song list", trkListHide:"🗑 Hide from the song list",
+  trkListShown:"👁 {name} is shown in the song list", trkListHidden:"🗑 {name} is hidden from the song list",
+  trkListNote:"🗑 only hides the list from “Add to playlists” in the song screen (nothing is deleted). 📋 makes an editable copy with the same songs.",
+  trkCopyBtn:"📋 Make an editable copy", trkCopyDone:"📋 Made an editable copy: {name}",
+  trkCopyFail:"Up to {n} playlists. Delete one you no longer use to make room", trkCopySuffix:" (copy)",
+  plInListsHidden:"{n} list(s) added by trk are hidden here. Show them from ⚙ Settings → 🐔 trk's playlist with 👁.",
+  trkFixedNotice:"🐔 trk lists no longer appear under “Add to playlists”. To edit one, open ⚙ → 🐔 trk's playlist and press 📋 for an editable copy.",
   trkCatalogBtn:"🐔 trk's playlist", trkCatalogTitle:"🐔 trk's playlist (non-commercial intro)",
   trkCatalogHint:"First 10 are SAM Free Music — tracks from 100% Orange Juice! Touhou, Blue Archive, Arknights and more inside! No audio bundled. (Copyright not waived.)",
   trkTab:"🐔 trk's playlist",
@@ -1063,6 +1081,13 @@ Object.assign(TEXT.zh, {
   trkOpen:"🐔 打开", trkAdded:"已添加 🐔 trk's playlist（{n}首）— 请到最右侧查看",
   trkDup:"🐔 trk's playlist 已在列表中", trkShow:"显示 🐔 trk's playlist", trkHide:"隐藏 🐔 trk's playlist",
   trkPanelTitle:"🐔 trk's playlist", trkPanelHint:"所选歌单添加到 🐔 下（非营利、不含音源）。",
+  trkListShow:"👁 在歌曲画面中显示", trkListHide:"🗑 从歌曲画面中隐藏",
+  trkListShown:"👁 已在歌曲画面中显示 {name}", trkListHidden:"🗑 已从歌曲画面中隐藏 {name}",
+  trkListNote:"🗑 只是把歌单从歌曲画面的「加入播放列表」中隐藏（不会删除歌单）。📋 会保留内容，创建一个可编辑的副本。",
+  trkCopyBtn:"📋 创建可编辑的副本", trkCopyDone:"📋 已创建可编辑的副本：{name}",
+  trkCopyFail:"最多 {n} 个歌单。删除不用的歌单后即可创建", trkCopySuffix:"（副本）",
+  plInListsHidden:"trk 添加的 {n} 个歌单在此不显示。可在 ⚙ 设置 → 🐔 trk's playlist 中用 👁 显示。",
+  trkFixedNotice:"🐔 trk 的歌单已不再显示在歌曲画面的「加入播放列表」中。想编辑时，请在 ⚙ → 🐔 trk's playlist 按 📋 创建副本。",
   trkCatalogBtn:"🐔 trk's playlist", trkCatalogTitle:"🐔 trk's playlist（非营利介绍）",
   trkCatalogHint:"前10首是SAM Free Music — 在100% Orange Juice! 中相遇的曲目。东方、碧蓝档案、明日方舟也有收录！不含音源。（版权未放弃）",
   trkTab:"🐔 trk's playlist",
@@ -1114,6 +1139,13 @@ Object.assign(TEXT.ko, {
   trkOpen:"🐔 열기", trkAdded:"🐔 trk's playlist를 추가했어요({n}곡) — 맨 오른쪽 탭을 확인해 주세요",
   trkDup:"🐔 trk's playlist는 이미 있어요", trkShow:"🐔 trk's playlist 표시", trkHide:"🐔 trk's playlist 숨기기",
   trkPanelTitle:"🐔 trk's playlist", trkPanelHint:"선택한 목록을 🐔에 추가합니다(비영리·음원 없음).",
+  trkListShow:"👁 곡 화면 목록에 표시", trkListHide:"🗑 곡 화면 목록에서 숨기기",
+  trkListShown:"👁 {name}을(를) 곡 화면 목록에 표시했어요", trkListHidden:"🗑 {name}을(를) 곡 화면 목록에서 숨겼어요",
+  trkListNote:"🗑은 곡 화면의 「재생목록에 넣기」에서 숨기기만 해요(목록은 지워지지 않아요). 📋은 내용을 그대로 둔 채 편집할 수 있는 복사본을 만들어요.",
+  trkCopyBtn:"📋 편집할 수 있는 복사본 만들기", trkCopyDone:"📋 편집할 수 있는 복사본을 만들었어요: {name}",
+  trkCopyFail:"재생목록은 {n}개까지예요. 쓰지 않는 것을 지우면 만들 수 있어요", trkCopySuffix:" (복사)",
+  plInListsHidden:"trk가 추가한 목록 {n}개는 여기에 표시하지 않아요. ⚙ 설정 → 🐔 trk's playlist의 👁로 표시할 수 있어요.",
+  trkFixedNotice:"🐔 trk 목록은 곡 화면의 「재생목록에 넣기」에 나오지 않아요. 편집하려면 ⚙ → 🐔 trk's playlist에서 📋로 복사본을 만드세요.",
   trkCatalogBtn:"🐔 trk's playlist", trkCatalogTitle:"🐔 trk's playlist(비영리 소개 플레이리스트)",
   trkCatalogHint:"처음 10곡은 SAM Free Music — 100% Orange Juice! 에서 만난 곡들이에요. 동방·블루 아카이브·명일방주도 들어 있어요! 음원은 들어 있지 않아요. (저작권 포기 아님)",
   trkTab:"🐔 trk's playlist",
@@ -1318,20 +1350,34 @@ function libTabIdOf(it) {
   const seg = libFolderSeg(it);
   return seg ? "folder:" + seg : "folder";
 }
-/* ⭐ お気に入り（js/favs.js）。いま選んでいるフォルダの曲を数える */
+/* ⭐ お気に入り（js/favs.js）。いま選んでいるフォルダの曲を数える。
+   any＝1軍／2軍／🧊フリーズのどれかに入っている曲の数（⭐タブを出すかの判断に使う） */
 function libFavKeys(all) {
   const F = window.TrkFavs;
-  if (!F) return { n:0 };
+  if (!F) return { n:0, any:0, group:"main" };
   const g = F.activeOf("song");
-  let n = 0;
-  for (const it of all) if (F.inGroup("song", g, it.key)) n++;
-  return { n, group:g };
+  let n = 0, any = 0;
+  for (const it of all) {
+    if (F.inGroup("song", g, it.key)) n++;
+    if (F.has("song", it.key)) any++;
+  }
+  return { n, any, group:g };
+}
+/* ⭐ お気に入りタブ（trk215）。**どのフォルダかに1曲でも入っていれば出す**。
+   1.1.4 までは「いま選んでいるフォルダの曲数」で出し入れしていたので、空の2軍／フリーズを
+   選んだだけでタブが消え、お気に入りが無くなったように見えた（戻る道も無かった）。
+   いま見ているタブが ⭐ なら、1曲も無くても出す（選んだ直後に消えない）。 */
+function libFavTab(all) {
+  if (!window.TrkFavs) return null;
+  const fav = libFavKeys(all);
+  if (!fav.any && !fav.n && core.settings.libTab !== "fav") return null;
+  return { id:"fav", icon:"⭐", label:tr("favTab"), n:fav.n };
 }
 /* タブの一覧（順番：すべて → ⭐お気に入り → プレイリスト → パック／アドオン／フォルダー → デモ曲 → 追加した曲 → 公認） */
 function libTabsOf(all) {
   const tabs = [{ id:"all", icon:"📚", label:tr("libTabAll"), n:all.filter(x => !x.trkOnly).length }];
-  const favN = libFavKeys(all).n;
-  if (favN) tabs.push({ id:"fav", icon:"⭐", label:tr("favTab"), n:favN });
+  const favTab = libFavTab(all);
+  if (favTab) tabs.push(favTab);
   /* ⚡ スマート棚（trk172）：再生履歴（🎮 リザルト・🎧 プレーヤー）か追加日時の材料があれば出す。
      中身は renderLib の libSmartSections（最近再生／よく再生／最近追加）。曲数はセクションに出る曲の延べではなく「材料を持つ曲」 */
   {
@@ -2597,6 +2643,7 @@ function plDelete(p, onClose) {
   if (p.locked) { plToast(tr("plLockedNo")); return; }
   core.settings.playlists = core.settings.playlists.filter(x => x !== p);
   trkMarkRemoved(p.id);
+  if (Array.isArray(core.settings.trkListed)) core.settings.trkListed = core.settings.trkListed.filter(id => id !== p.id);   /* 👁 の記録も消す */
   core.settings.libOpenTabs = (Array.isArray(core.settings.libOpenTabs) ? core.settings.libOpenTabs : []).filter(x => x !== p.id);
   if (core.settings.libTab === "pl:" + p.id) core.settings.libTab = "all";
   core.saveUserPrefs();
@@ -2853,9 +2900,13 @@ function songProfile(it) {
   const matchMemoRow = plRow(tr("plMatchMemo"), matchMemo);
   const matchMemoHelp = el("div", "plHint", tr("plMatchMemoNote")); matchMemoHelp.id = "plMatchMemoHelp";
   d.card.append(matchMemoRow, matchMemoHelp);
-  if (core.settings.playlists.length) {
+  /* 🐔 trk218：trk が追加した（配布の）リストは、初期状態ではここに出さない（並ぶと圧迫するため）。
+     出すかどうかは ⚙ → 🐔 trk's playlist の 👁 で選ぶ。利用者のリストはいつも出す。 */
+  const shownLists = core.settings.playlists.filter(trkListShown);
+  const hiddenLists = core.settings.playlists.length - shownLists.length;
+  if (shownLists.length || hiddenLists) {
     d.card.append(el("div", "plSep"), el("b", "plCardTitle", tr("plInLists")));
-    for (const p of core.settings.playlists) {
+    for (const p of shownLists) {
       const c = el("input"); c.type = "checkbox"; c.checked = p.songs.includes(it.key); c.disabled = !!p.frozen;
       c.addEventListener("change", () => {
         const n = p.songs.length;
@@ -2867,6 +2918,7 @@ function songProfile(it) {
       if (p.frozen) r.classList.add("plRowDim");
       d.card.append(r);
     }
+    if (hiddenLists) d.card.append(el("div", "plHint", tr("plInListsHidden", { n: hiddenLists })));
   }
   const save = el("button", "plBtn", tr("plProfileSave")); save.type = "button";
   save.addEventListener("click", () => {
@@ -3854,7 +3906,7 @@ function renderLib() {
       : tr("plWishHead", { n: totalAll })));
   }
   if (!rows.length) {
-    box.append(el("div", "libEmpty", tr(scope.length ? "libNoMatch" : (tabId.startsWith("pl:") ? "plTabHint" : tabId.startsWith("fld:") ? "fldTabHint" : "libTabEmpty")))); return;
+    box.append(el("div", "libEmpty", tr(scope.length ? "libNoMatch" : tabId === "fav" ? "libFavEmpty" : (tabId.startsWith("pl:") ? "plTabHint" : tabId.startsWith("fld:") ? "fldTabHint" : "libTabEmpty")))); return;
   }
   /* 🪶 軽量化：初回に描く行数をへらす（行にはボタン・長押し・ドラッグの監視がたくさん付くので、
      長い棚ではここが端末いちばんの待ち時間になります）。棚自体とランダム選曲は全曲のままです */
@@ -3909,6 +3961,21 @@ function renderLib() {
     if (it.builtinDemo && Object.keys(firstSparkChartMap).length) meta.append(el("i", "libTag", "🎼"));   /* 🎼 trk!手づくりのデモ譜面がいっしょに入っている印 */
     if (info && info.plays) meta.append(el("i", "libTag", tr("libPlays", { n:info.plays })));
     if (info && info.best) meta.append(el("i", "libTag", info.best.toLocaleString()));
+    {   /* ⭐ trk215：お気に入りのフォルダの状態を、行にも出す（📌ピン／🧊フリーズ） */
+      const F = window.TrkFavs;
+      if (F) {
+        if (F.pinned("song", it.key)) {
+          const pin = el("i", "libTag favTag", "📌");
+          pin.title = tr("favPin"); pin.setAttribute("aria-label", tr("favPin"));
+          meta.append(pin);
+        }
+        if (F.inGroup("song", "frozen", it.key)) {
+          const fz = el("i", "libTag favTag", "🧊");
+          fz.title = tr("favFrozenBadge"); fz.setAttribute("aria-label", tr("favFrozenBadge"));
+          meta.append(fz);
+        }
+      }
+    }
     b.append(left, meta);
     b.addEventListener("click", () => { if (!plSuppressClick()) selectSong(it); });
     b.draggable = true;   /* 🎧 プレイリストタブへドラッグして追加 */
@@ -3933,7 +4000,12 @@ function renderLib() {
       sb.addEventListener("click", e => {
         e.stopPropagation();
         if (inFav) { const r = F.remove("song", it.key); if (!r.ok) F.toast(F.msg(r.why, r.g)); }
-        else F.add("song", it.key, { group:"main", append:false });
+        /* ⭐ trk215：いま開いているフォルダ（2軍／🧊フリーズ）に入れる。📤元お気に入りを見ているときは1軍へ */
+        else {
+          const g = F.activeOf("song");
+          const r = F.add("song", it.key, { group:(g === "sub" || g === "frozen") ? g : "main", append:false });
+          if (!r.ok) F.toast(F.msg(r.why, r.g));
+        }
         renderLib();
       });
       wrap.append(sb);
@@ -4411,7 +4483,7 @@ function randomSongPool() {
   const F = window.TrkFavs;
   if (F) {
     for (const key of F.state("song").pins) {
-      if (F.groupOf("song", key) === "former") continue;
+      if (!F.has("song", key)) continue;      /* 1軍／2軍／🧊 のピンだけ（📤元お気に入りは抽選に出さない） */
       const it = allSongs().find(x => x.key === key);
       if (it && !pool.includes(it)) pool.push(it);
     }
@@ -5350,12 +5422,53 @@ function syncTrkUI() {
 function trkFolderIdSet() { return plWishFolderIds(TRK_FOLDER_ID); }
 /* 🐔 の中のリスト（trk が作ったもの、または 🐔 のフォルダ内にあるもの）か */
 function plIsTrkManaged(p) { return TRK_AUTO_ID.test(p.id) || trkFolderIdSet().has(p.folder); }   /* 🐔 の階層に入るフォルダ（trk 自身と、その子孫） */
+const TRK_LIST_MAX = 200;
+/* 🐔 trk218：trk が作った（配布の）リストか。ID が trk- で始まるものだけ。
+   利用者が 📋 で作ったコピーは pl… なので、🐔 の中にあっても利用者のリストとして扱う */
+function trkIsFixedList(p) { return !!p && TRK_AUTO_ID.test(p.id); }
+/* 👁 曲画面の「プレイリストに入れる」に出すか。trk のリストは初期状態では出さない（並ぶと圧迫するため） */
+function trkListShown(p) {
+  if (!trkIsFixedList(p)) return true;
+  return Array.isArray(core.settings.trkListed) && core.settings.trkListed.includes(p.id);
+}
+/* 🗑／👁 を切り替える（リストそのものは消さない） */
+function trkListSetShown(p, on) {
+  if (!p) return;
+  const ids = new Set(Array.isArray(core.settings.trkListed) ? core.settings.trkListed : []);
+  if (on) ids.add(p.id); else ids.delete(p.id);
+  core.settings.trkListed = [...ids].slice(-200);
+  core.saveUserPrefs();
+}
+/* 📋 編集できるコピー＝通常のプレイリスト（中クリックで消せる・名前や色も変えられる）。
+   カタログとの紐づけ（cat）は付けないので、起動時の更新で中身を上書きされない。 */
+function trkCopyAsUser(p) {
+  if (!p || core.settings.playlists.length >= TRK_LIST_MAX) return null;
+  const suffix = tr("trkCopySuffix");
+  const base = String(p.name || "").slice(0, Math.max(1, 24 - suffix.length));
+  const copy = plSanitize({ id: "pl" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name: base + suffix, icon: p.icon, color: p.color, frozen: false, locked: false,
+    songs: (p.songs || []).slice(), wish: (p.wish || []).slice(), guide: p.guide || null,
+    folder: "", tags: (p.tags || []).slice(), cat: "", createdAt: Date.now() });
+  if (!copy) return null;
+  core.settings.playlists.push(copy);
+  core.saveUserPrefs();
+  return copy;
+}
+/* 📢 固定の案内（アップデート後に一度だけ）。trk のリストがある人にだけ出す */
+function trkFixedNoticeOnce() {
+  if (core.settings.trkFixedNotice === 1) return false;
+  if (!core.settings.playlists.some(trkIsFixedList)) return false;
+  core.settings.trkFixedNotice = 1;
+  core.saveUserPrefs();
+  try { plToast(tr("trkFixedNotice")); } catch (_) {}
+  return true;
+}
 function renderTrkSettings() {
   const box = core.$("trkOrderList");
   if (!box) return;
   box.replaceChildren();
   const ids = trkFolderIdSet();
-  const trkList = core.settings.playlists.filter(p => ids.has(p.folder));
+  const trkList = core.settings.playlists.filter(p => ids.has(p.folder) || trkIsFixedList(p));
   if (!trkList.length) { box.append(el("div", "hint", tr("trkOrderEmpty"))); return; }
   const ordered = trkOrderedPlaylists(trkList), peers = ordered.map(x => x.id);
   for (const [i, p] of ordered.entries()) {
@@ -5368,9 +5481,34 @@ function renderTrkSettings() {
     trkMoveButtonsState(up, down, i, ordered.length);
     up.addEventListener("click", () => trkMovePlaylist(p.id, -1, peers));
     down.addEventListener("click", () => trkMovePlaylist(p.id, 1, peers));
+    /* 🗑 曲画面の「プレイリストに入れる」から隠す／👁 また出す。trk のリストは初期状態では隠れている（trk218）。
+       📋 で作ったコピー（pl…）は利用者のリストなので、この2つは出さない（元から一覧に出る・そのまま編集できる） */
+    const listed = trkListShown(p);
+    const eye = el("button", "plBtn small", listed ? "\uD83D\uDDD1" : "\uD83D\uDC41");
+    eye.type = "button";
+    eye.title = listed ? tr("trkListHide") : tr("trkListShow");
+    eye.setAttribute("aria-label", (listed ? tr("trkListHide") : tr("trkListShow")) + " " + p.name);
+    eye.setAttribute("aria-pressed", listed ? "true" : "false");
+    if (!listed) eye.classList.add("plTrkHidden");
+    eye.addEventListener("click", () => {
+      trkListSetShown(p, !listed);
+      plToast(listed ? tr("trkListHidden", { name: p.name }) : tr("trkListShown", { name: p.name }));
+      renderTrkSettings();
+    });
+    /* 📋 編集できるコピー（通常のプレイリスト）を作る。元のリストはそのまま */
+    const copyBtn = el("button", "plBtn small", "\uD83D\uDCCB");
+    copyBtn.type = "button"; copyBtn.title = tr("trkCopyBtn"); copyBtn.setAttribute("aria-label", tr("trkCopyBtn") + " " + p.name);
+    copyBtn.addEventListener("click", () => {
+      const copy = trkCopyAsUser(p);
+      if (!copy) { plToast(tr("trkCopyFail", { n: TRK_LIST_MAX })); return; }
+      plToast(tr("trkCopyDone", { name: copy.name }));
+      renderTrkSettings(); renderLib();
+    });
     row.append(name, open, up, down);
+    if (trkIsFixedList(p)) row.append(eye, copyBtn);
     box.append(row);
   }
+  box.append(el("div", "hint", tr("trkListNote")));
   if (core.settings.trkSortABC) box.append(el("div", "hint", tr("trkOrderAbcOff")));
 }
 
@@ -5433,6 +5571,7 @@ function apkTrkAddEntry(entry) {
       return ensureAgentOstPlaylist(builtInSongs.filter(song => song.key.startsWith(AGENT_OST_KEY_PREFIX)).map(song => song.key));
     } finally { apkTrkSelectedFoldersOnly = false; }
   }
+  if (!entry.playlist || !Array.isArray(entry.playlist.songs) || !entry.playlist.songs.length) return false;
   let root = plFolderById(TRK_FOLDER_ID);
   if (!root) {
     if (!plFolderRoom()) return false;
@@ -5749,6 +5888,8 @@ async function initLibrary() {
   if (core.settings.libTab === "builtin") core.settings.libTab = plById(TRK_OST_ID) ? "pl:" + TRK_OST_ID : "all";
   syncTrkUI();
   renderLib();
+  /* 📢 trk218：trk のリストが「曲画面の一覧に出ない」既定へ変わったことを、一度だけ伝える */
+  try { trkFixedNoticeOnce(); } catch(_){}
   void initOptionalTutorialDemo();
   void initTrkOstSongs();
   void initAgentOstTracks();
