@@ -64,7 +64,7 @@ Playerの状態変更リスナーからの再入と、Media3より前にFuture�
 
 ### MediaSession・コントローラーへの伝播（CI実行待ち）
 
-テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。CI成功までは結果未確認。
+テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。CIの失敗注釈を改善して再検査する。
 
 ## サービス・フォーカス・検証順
 

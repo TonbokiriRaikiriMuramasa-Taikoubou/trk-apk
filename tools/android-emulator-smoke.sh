@@ -27,10 +27,8 @@ if (( status != 0 )); then
   echo '::error::App instrumentation or its Android build failed; see the Gradle log below'
   grep -Ei '(^FAILURE:|^\* What went wrong:|^Execution failed|^> (Execution failed|Could not|Failed|A failure)|^Caused by:|^error:|fatal error|outofmemoryerror|no space left on device|timed out|connection reset)' /tmp/trk-emulator-gradle.log | tail -n 7 | sed 's/^/::error::/' || true
   tail -n 80 /tmp/trk-emulator-gradle.log
-  # A crashing instrumentation process may not leave JUnit results. The
-  # disposable emulator's filtered logcat helps diagnose that case.
-  adb logcat -d -t 1500 -s AndroidRuntime:E ActivityManager:W ActivityTaskManager:W TestRunner:I '*:S' | tail -n 120 | sed 's/^/::error::/' || true
-  # Publish concise JUnit failures as check annotations, not just a report file.
+  # Publish JUnit failures before optional logcat, because GitHub truncates
+  # annotations and the failure itself is more useful than routine task logs.
   python3 - <<'PY'
 import glob, xml.etree.ElementTree as ET
 for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml', recursive=True):
@@ -44,6 +42,9 @@ for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml'
             msg = msg.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
             print('::error::' + msg[:900])
 PY
+  # A crashing instrumentation process may not leave JUnit results. Keep the
+  # filtered logcat in the job log without exhausting annotation slots.
+  adb logcat -d -t 1500 -s AndroidRuntime:E ActivityManager:W ActivityTaskManager:W TestRunner:I '*:S' | tail -n 120 || true
 else
   # A green Gradle exit is not enough if no instrumentation tests were run.
   python3 - <<'PY'
