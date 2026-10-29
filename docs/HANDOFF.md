@@ -9,7 +9,7 @@
 - このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` の `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基にしたCapacitor 8のAndroid版。Drive上の1.1.4 ZIPとのバイト一致は未確認。
 - 仮アプリID `com.trk.agrg`、開発版 `0.1.0-dev`、minSdk 24、target／compileSdk 36。ゲーム機能・Web再生・書斎などを引き継ぐが、Androidでの動作は機能ごとに確認する。
 - **仕様の固定記録**：[APK-SPEC-2026-10-29.md](APK-SPEC-2026-10-29.md) は `9c53d5c` 時点の上流との差分と未検証・今後の方針をまとめたもの。[同一ファイルのDrive版](https://drive.google.com/file/d/1JwyQL83Hz55Qnl1vP01QSqUuWjNtoMbU/view)のSHA-256は `57dcf085bf026278fb74ab811cf08913717d9388f995ff4806dcb7aac08e7081`。以降の仕様変更は本HANDOFFと新しい記録を優先する。
-- **これから行える作業**：[優先順位付き作業一覧](NEXT-ACTIONS-2026-10-29.md)。端末なしで進める対策、実機が必要な確認、利用者の判断待ちを区別する。Media3段階Aの通信・競合・状態の[設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)とテスト専用の偽Bridge／偽Playerモデルを追加したが、Media3サービスや実通信はまだ実装していない。
+- **これから行える作業**：[優先順位付き作業一覧](NEXT-ACTIONS-2026-10-29.md)。端末なしで進める対策、実機が必要な確認、利用者の判断待ちを区別する。Media3段階Aの通信・競合・状態の[設計案](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)とテスト専用の偽Bridge／偽Playerモデルと、`androidTestImplementation` 限定でMedia3 `SimpleBasePlayer` の状態を調べる検査を追加した。製品アプリのMedia3サービスや実通信はまだ実装していない。
 - 詳細：[Android設計](apk-development.md)／[実機チェック表](ANDROID-DEVICE-CHECKS.md)／[Media3計画](media3-plan.md)／[Media3導入前レビュー依頼](MEDIA3-PRE-IMPLEMENTATION-REVIEW-REQUEST.md)／[段階的開発の判断](decisions/0001-android-milestones.md)／[開発作業の承認範囲](decisions/0002-development-authorization.md)／[安全性](SECURITY.md)／[品質検査](QUALITY-CHECKS.md)。上流の引き継ぎは [HANDOFF-UPSTREAM-trk214.md](HANDOFF-UPSTREAM-trk214.md)、古い経緯は [HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)。
 - 以前のDriveフォルダ `trk-apk-0.1.0-dev-2026-10-29` は古い開発ソースでLat式モデルを含む。後の `trk-apk-review-source-plan-2026-10-29` はPR #2時点であり、今回の変更や実機結果を含まない。いずれも自動更新していない。
 

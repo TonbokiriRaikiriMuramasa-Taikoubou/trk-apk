@@ -6,6 +6,17 @@ adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
 adb shell dumpsys webviewupdate | head -30 || true
 cd android || exit 1
+# The Media3 experiment belongs to androidTestImplementation only, not the
+# production app's runtime dependency graph.
+if ! ./gradlew --no-daemon :app:dependencies --configuration debugRuntimeClasspath > /tmp/trk-debug-runtime-deps.log 2>&1; then
+  tail -n 60 /tmp/trk-debug-runtime-deps.log | sed 's/^/::error::/'
+  exit 1
+fi
+if grep -q 'androidx\.media3:' /tmp/trk-debug-runtime-deps.log; then
+  echo '::error::Media3 unexpectedly appears in the app debug runtime dependencies'
+  exit 1
+fi
+echo '::notice::Media3 is absent from the app debug runtime dependency graph'
 # Scope to the app; generated Cordova plugin modules are not our test target.
 echo '::notice::Running app instrumentation on the disposable emulator'
 ./gradlew --no-daemon :app:connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
@@ -37,6 +48,7 @@ expected = {'freshStartupBackAndNativeOrientationBridge',
             'rendererCrashShowsRecoveryAndRetryStartsGuarded',
             'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
             'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
+            'media3PendingOperationsUsePlaceholderAndDeferInvalidation',
             'pictureInPictureRatioUsesVideoAndAndroidLimits',
             'nativePictureInPictureEntryNotifiesWebView'}
 found = {}

@@ -12,6 +12,13 @@ import android.os.SystemClock;
 import android.util.Rational;
 import android.view.KeyEvent;
 import androidx.lifecycle.Lifecycle;
+import androidx.media3.common.Player;
+import androidx.media3.common.SimpleBasePlayer;
+import androidx.media3.common.util.UnstableApi;
+import android.os.Looper;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import java.util.Collections;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SdkSuppress;
@@ -24,7 +31,59 @@ import org.junit.runner.RunWith;
 
 /** Emulator smoke only: neither physical touch nor audio/Bluetooth is covered. */
 @RunWith(AndroidJUnit4.class)
+@UnstableApi
 public class AndroidWebViewSmokeTest {
+    // Test-only fake: no audio, MediaSession, service, or bridge is created.
+    private static final class TestMedia3Player extends SimpleBasePlayer {
+        final SettableFuture<Void> pending = SettableFuture.create();
+        final boolean conservativePlaceholder;
+        boolean actualPlaying;
+        TestMedia3Player(boolean actualPlaying, boolean conservativePlaceholder) {
+            super(Looper.getMainLooper());
+            this.actualPlaying = actualPlaying;
+            this.conservativePlaceholder = conservativePlaceholder;
+        }
+        @Override protected State getState() {
+            return new State.Builder()
+                .setAvailableCommands(new Player.Commands.Builder().add(Player.COMMAND_PLAY_PAUSE).build())
+                .setPlaylist(Collections.singletonList(new MediaItemData.Builder("fixture").build()))
+                .setPlaybackState(Player.STATE_READY)
+                .setPlayWhenReady(actualPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+                .build();
+        }
+        @Override protected State getPlaceholderState(State suggested) {
+            return conservativePlaceholder ? getState() : suggested;
+        }
+        @Override protected ListenableFuture<?> handleSetPlayWhenReady(boolean value) { return pending; }
+        void changedActualState(boolean playing) { actualPlaying = playing; invalidateState(); }
+    }
+
+    @Test
+    public void media3PendingOperationsUsePlaceholderAndDeferInvalidation() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            TestMedia3Player optimistic = new TestMedia3Player(false, false);
+            assertTrue(!optimistic.isPlaying());
+            optimistic.play();
+            assertTrue("Default placeholder reports playing before the operation succeeds", optimistic.isPlaying());
+            optimistic.pending.setException(new IllegalStateException("simulated failure"));
+            assertTrue("Failed operation returns to the confirmed state", !optimistic.isPlaying());
+
+            TestMedia3Player cautiousStart = new TestMedia3Player(false, true);
+            cautiousStart.play();
+            assertTrue("Custom placeholder can avoid claiming play before acknowledgement", !cautiousStart.isPlaying());
+            cautiousStart.changedActualState(true);
+            assertTrue("invalidateState is deferred while a command is pending", !cautiousStart.isPlaying());
+            cautiousStart.pending.set(null);
+            assertTrue(cautiousStart.isPlaying());
+
+            TestMedia3Player cautiousStop = new TestMedia3Player(true, true);
+            cautiousStop.pause();
+            cautiousStop.changedActualState(false);
+            assertTrue("A confirmed stop is not visible while an operation remains pending", cautiousStop.isPlaying());
+            cautiousStop.pending.set(null);
+            assertTrue(!cautiousStop.isPlaying());
+        });
+    }
     private String evaluate(ActivityScenario<MainActivity> scenario, String javascript) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<String> value = new AtomicReference<>();
