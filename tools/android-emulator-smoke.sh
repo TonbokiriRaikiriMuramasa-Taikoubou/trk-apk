@@ -74,7 +74,8 @@ missing = expected - found.keys()
 if missing:
     print('::error::Expected Android smoke test results are missing: ' + ', '.join('.'.join(key) for key in sorted(missing)))
     sys.exit(1)
-for (class_name, name), case in found.items():
+# The GitHub check can truncate annotations; put the new Media3 checks first.
+for (class_name, name), case in sorted(found.items(), key=lambda item: (item[0][0] != barrier_class, item[0][1])):
     if case.find('failure') is not None or case.find('error') is not None:
         print('::error::Smoke test failed: ' + name)
         sys.exit(1)
