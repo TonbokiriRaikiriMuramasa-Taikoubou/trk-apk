@@ -56,6 +56,12 @@ Android計測テストだけで Apache-2.0 の `androidx.media3:media3-common:1.
 
 Playerの状態変更リスナーからの再入と、Media3より前にFuture完了リスナーが登録された場合の反例の双方を検査する。Futureを単一化しても、任意のコールバックや公開APIに対し状態切替が原子的になると仮定しない。全命令待ちによる表示遅延、寿命・容量・期限、同一Futureを複数回返すことのAPI契約とバージョン依存も別途検討が必要。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817265509)（`b5e5e9e`）で両検査が成功した。仮の通常ケースでは、2命令のうち最初の応答は残る命令が終わるまで表示されず、遮断時のPlayer状態リスナーは停止・命令不可を観測し、遮断処理中の明示再開は拒否された。古い命令の遅延応答は新しい保留を完了しなかった。一方、**Media3のリスナーより先に登録したFuture完了リスナーは、遮断中でも古いplayingを読めた**。その再入によるplay発行はハンドラーの遮断確認で拒否できたが、状態表示の原子性は得られない。同一Futureの内部管理やリスナー順序に依存する方式は採用確定せず、公開しない設計と実際の再入経路をさらに精査する。後続の[CI再実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40817902173)（`ca3df46`）はAndroidビルド／計測テストの段階で失敗したが、取得できたannotationsでは原因を特定できなかった。エラー表示を改善した後の[再検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40818360528)（`650d2e0`）は成功し、新規2検査の成功もannotationで確認。ただし以前の失敗原因は未特定で、再発しない保証はない。
 
+### 意図を同期更新する案（CI実行待ち）
+
+実 `SimpleBasePlayer` を使うテスト専用の別案として、`playWhenReady` にユーザー意図を同期記録して完了済みFutureを返し、仮の結果待ちを `STATE_BUFFERING` で表し、その後の結果で `invalidateState()` する模型を追加した。Future完了は「意図の更新」のみで、**Bridge配送・再生／停止・消音の成功を示さない**。テスト内の遠隔再生フラグと応答・タイムアウトは手動の仮定で、WebView・音声・時刻・通信ではない。
+
+この割当ては実APIに適合する設計として承認したものではない。[公式Player定義](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/Player.java)では `playWhenReady` は意図、`isPlaying` は位置が進みメディアが提示されている状態、`STATE_BUFFERING` はすぐに再生できず再生準備中、`STATE_IDLE` は停止／失敗などで通常 `prepare()` が必要な状態。停止要求中もWeb側が実際に再生している状況へこれらを割り当てると矛盾し得る。意図更新だけで `handleSetPlayWhenReady` のFutureを完了することがAPI契約上適切かも未決。MediaSession／通知が各値をどう解釈するかを検証するまでは採用しない。CI実行結果は未確認。
+
 ## サービス・フォーカス・検証順
 
 - フォアグラウンドサービスは起動条件、通知、権限、Androidバージョン別制限を確認し、適法に開始できない場合はエラーを示して既存再生の状態と矛盾させない。Media3の通知・セッションとChromiumとの重複を実機で調べる。通知を出しただけでWebViewが生存する保証はない。
