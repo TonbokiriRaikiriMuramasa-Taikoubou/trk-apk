@@ -48,6 +48,14 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     Object.defineProperty(core.video,"duration",{value:100,configurable:true});
     d.getElementById("guideSkip").click();
     w.TrkMediaPlayer.open(); assert.equal(w.TrkMediaPlayer.isOpen(),true);
+    const previousOption=d.getElementById("previousAlwaysTrack");
+    assert.equal(previousOption.checked,false); assert.equal(core.settings.previousAlwaysTrack,false);
+    core.video.currentTime=10; assert.equal(w.TrkMediaPlayer.restartForPrevious(),true); assert.equal(core.video.currentTime,0);
+    previousOption.click(); assert.equal(core.settings.previousAlwaysTrack,true);
+    assert.equal(JSON.parse(w.localStorage.getItem("shadow_taiko_preferences_v2")).previousAlwaysTrack,true);
+    core.video.currentTime=10; assert.equal(w.TrkMediaPlayer.restartForPrevious(),false); assert.equal(core.video.currentTime,10);
+    previousOption.click(); assert.equal(core.settings.previousAlwaysTrack,false);
+    assert.equal(JSON.parse(w.localStorage.getItem("shadow_taiko_preferences_v2")).previousAlwaysTrack,false);
     assert.equal(w.TrkVideoMax.open(),true, "initialize fullscreen listeners");
     const loop=d.querySelector(".mediaLoopBox"), status=loop.querySelector(".hint");
     core.video.currentTime=10; loop.querySelector('[data-i18n="mediaLoopSetA"]').click();

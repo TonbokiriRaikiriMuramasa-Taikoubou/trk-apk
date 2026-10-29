@@ -287,7 +287,7 @@ Object.assign(TEXT.ja, {
   tvDim:"背景の暗さ", tvBlur:"背景のぼかし",
   tvCurrent:"いまの映像：{name}",
   tvPrev:"前の映像", tvNext:"次の映像", tvRandom:"おまかせ",
-  tvPrevSong:"◀ 前の曲", tvNextSong:"▶ 次の曲", tvNoSongs:"曲がありません",
+  tvPrevSong:"◀ 前へ", tvNextSong:"▶ 次の曲", tvNoSongs:"曲がありません",
   /* 🆕 メニューでmp4の映像を流す・「確認」タブ */
   tvpTabSetup:"🎛 TVの設定", tvpTabPreview:"🖼 映像の確認",
   tvpPreviewHint:"いま選んでいる映像フィルター・TVスキン・暗さ・ぼかしを、この画面で確かめられます。曲を選ぶと、ここにそのmp4が流れます（ゲーム画面と同じ大きさで表示）。",
@@ -360,7 +360,7 @@ Object.assign(TEXT.en, {
   tvDim:"Background dim", tvBlur:"Background blur",
   tvCurrent:"Current: {name}",
   tvPrev:"Prev video", tvNext:"Next video", tvRandom:"Random",
-  tvPrevSong:"◀ Previous song", tvNextSong:"▶ Next song", tvNoSongs:"No songs",
+  tvPrevSong:"◀ Previous", tvNextSong:"▶ Next song", tvNoSongs:"No songs",
   /* 🆕 menu mp4 playback + Preview tab */
   tvpTabSetup:"🎛 TV setup", tvpTabPreview:"🖼 Video check",
   tvpPreviewHint:"Check the current filter, TV skin, dim and blur right here. Pick a song and its mp4 plays in this box (same framing as in game).",
@@ -433,7 +433,7 @@ Object.assign(TEXT.zh, {
   tvDim:"背景暗度", tvBlur:"背景模糊",
   tvCurrent:"当前视频：{name}",
   tvPrev:"上一个视频", tvNext:"下一个视频", tvRandom:"随机",
-  tvPrevSong:"◀ 上一首", tvNextSong:"▶ 下一首", tvNoSongs:"没有歌曲",
+  tvPrevSong:"◀ 返回", tvNextSong:"▶ 下一首", tvNoSongs:"没有歌曲",
   /* 🆕 菜单中播放mp4 + 「确认」标签页 */
   tvpTabSetup:"🎛 电视设置", tvpTabPreview:"🖼 画面确认",
   tvpPreviewHint:"可在此确认当前的滤镜、电视皮肤、暗度和模糊。选一首歌后，其mp4会在这里播放（与游戏画面相同的取景）。",
@@ -506,7 +506,7 @@ Object.assign(TEXT.ko, {
   tvDim:"배경 어둡기", tvBlur:"배경 흐림",
   tvCurrent:"현재 영상: {name}",
   tvPrev:"이전 영상", tvNext:"다음 영상", tvRandom:"랜덤",
-  tvPrevSong:"◀ 이전 곡", tvNextSong:"▶ 다음 곡", tvNoSongs:"곡이 없습니다",
+  tvPrevSong:"◀ 이전", tvNextSong:"▶ 다음 곡", tvNoSongs:"곡이 없습니다",
   /* 🆕 메뉴에서 mp4 재생 + 「확인」 탭 */
   tvpTabSetup:"🎛 TV 설정", tvpTabPreview:"🖼 영상 확인",
   tvpPreviewHint:"지금 고른 필터·TV 스킨·어둡기·흐림을 이 화면에서 확인할 수 있습니다. 곡을 고르면 그 mp4가 여기서 재생됩니다(게임 화면과 같은 구도).",
@@ -1530,6 +1530,7 @@ addEventListener("DOMContentLoaded", () => {
   const songStep = async dir => {
     const playing = core.phase !== "title";
     if (playing && !core.settings.tvSongWhilePlaying) return;        // 初期オフ（ゲーム中は曲が飛ばない）
+    if (dir < 0 && window.TrkMediaPlayer?.restartForPrevious?.()) return;
     const pickSong = dir > 0 ? (typeof nextSong === "function" ? nextSong : null)
                              : (typeof prevSong === "function" ? prevSong : null);
     const it = pickSong ? pickSong() : null;

@@ -250,6 +250,27 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void previousButtonOptionPersistsAndControlsRestartInWebView() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkMediaPlayer && !!window.Trk.core");
+            // Real app DOM/JS in WebView; only the media position is faked. No actual audio is tested.
+            String expression = "(function(){" +
+                "const c=window.Trk.core,b=document.getElementById('previousAlwaysTrack');" +
+                "if(!b||c.phase!=='title') return false;" +
+                "c.videoReady=true; c.currentSong={key:'previous-test',title:'previous-test'};" +
+                "let t=10;Object.defineProperty(c.video,'currentTime',{configurable:true,get:()=>t,set:v=>{t=v}});" +
+                "c.settings.previousAlwaysTrack=false;b.checked=false;" +
+                "const first=window.TrkMediaPlayer.restartForPrevious()&&t===0;" +
+                "b.checked=true;b.dispatchEvent(new Event('change',{bubbles:true}));t=10;" +
+                "const saved=JSON.parse(localStorage.getItem('shadow_taiko_preferences_v2')||'{}');" +
+                "const second=!window.TrkMediaPlayer.restartForPrevious()&&t===10&&saved.previousAlwaysTrack===true;" +
+                "b.checked=false;b.dispatchEvent(new Event('change',{bubbles:true}));" +
+                "return first&&second&&c.settings.previousAlwaysTrack===false;})()";
+            assertEquals("true", evaluate(scenario, expression));
+        }
+    }
+
+    @Test
     public void pictureInPictureRatioUsesVideoAndAndroidLimits() {
         assertEquals(new Rational(9, 16), MainActivity.pipRatio(1080, 1920));
         assertEquals(new Rational(16, 9), MainActivity.pipRatio(1920, 1080));

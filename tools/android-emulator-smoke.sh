@@ -55,7 +55,8 @@ intent_class = 'com.trk.agrg.Media3IntentExperimentTest'
 session_class = 'com.trk.agrg.Media3SessionExperimentTest'
 button_class = 'com.trk.agrg.Media3MediaButtonExperimentTest'
 expected_by_class = {
-    smoke_class: {'freshStartupBackAndNativeOrientationBridge',
+    smoke_class: {'previousButtonOptionPersistsAndControlsRestartInWebView',
+                  'freshStartupBackAndNativeOrientationBridge',
                   'rendererCrashShowsRecoveryAndRetryStartsGuarded',
                   'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
                   'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
@@ -89,7 +90,7 @@ if missing:
     print('::error::Expected Android smoke test results are missing: ' + ', '.join('.'.join(key) for key in sorted(missing)))
     sys.exit(1)
 # The GitHub check can truncate annotations; put the new Media3 checks first.
-for (class_name, name), case in sorted(found.items(), key=lambda item: (item[0][0] != button_class, item[0][1])):
+for (class_name, name), case in sorted(found.items(), key=lambda item: (item[0][1] != 'previousButtonOptionPersistsAndControlsRestartInWebView', item[0][0] != button_class, item[0][1])):
     if case.find('failure') is not None or case.find('error') is not None:
         print('::error::Smoke test failed: ' + name)
         sys.exit(1)

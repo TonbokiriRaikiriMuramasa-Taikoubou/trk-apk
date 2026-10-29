@@ -470,6 +470,7 @@ function syncOptionsUI() {
   if (core.$("escNoReturn")) core.$("escNoReturn").checked = !!core.settings.escNoReturn;
   if (core.$("judgeOrdered")) core.$("judgeOrdered").checked = !!core.settings.judgeOrdered;
   if (core.$("mediaReloadOnExit")) core.$("mediaReloadOnExit").checked = !!core.settings.mediaReloadOnExit;   /* 🚪 trk206 */
+  if (core.$("previousAlwaysTrack")) core.$("previousAlwaysTrack").checked = !!core.settings.previousAlwaysTrack;
   if (core.$("artWallpaperBg")) core.$("artWallpaperBg").checked = !!core.settings.artWallpaperBg;
   if (core.$("useStudyArtwork")) core.$("useStudyArtwork").checked = !!core.settings.useStudyArtwork;
   if (core.$("hideArtworkDuringChart")) core.$("hideArtworkDuringChart").checked = !!core.settings.hideArtworkDuringChart;
@@ -483,7 +484,7 @@ function syncOptionsUI() {
 function optionsChanged() { core.saveUserPrefs(); syncOptionsUI(); core.emit("options"); }
 [["countdown", "countdown"], ["countdownSE", "countdownSE"], ["resumeCountdown", "resumeCountdown"],
  ["optHidden", "hidden"], ["optSudden", "sudden"], ["optMirror", "modMirror"], ["optRandom", "modRandom"],
- ["swayAllModes", "swayAllModes"], ["escNoReturn", "escNoReturn"], ["judgeOrdered", "judgeOrdered"], ["mediaReloadOnExit", "mediaReloadOnExit"],
+ ["swayAllModes", "swayAllModes"], ["escNoReturn", "escNoReturn"], ["judgeOrdered", "judgeOrdered"], ["mediaReloadOnExit", "mediaReloadOnExit"], ["previousAlwaysTrack", "previousAlwaysTrack"],
  ["artWallpaperBg", "artWallpaperBg"], ["useStudyArtwork", "useStudyArtwork"], ["hideArtworkDuringChart", "hideArtworkDuringChart"]].forEach(([id, key]) => {
   const el = core.$(id);
   if (el) el.addEventListener("change", e => { core.settings[key] = e.target.checked; optionsChanged(); });
