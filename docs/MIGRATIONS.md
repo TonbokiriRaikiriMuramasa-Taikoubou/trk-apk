@@ -15,6 +15,8 @@
 | `trkFolderRefsPrune1` | 一回限りの印 | trk201 | 2027-01-27 | 期限後、作業者が削除を提案し、利用者の確認を得てから消す（旧版が保存したフォルダー曲の 📄 参照を1回だけ消す） | js/library.js `pruneFolderRefsOnce`、js/core.js |
 | `trkEndfieldTidy1` | 一回限りの印 | trk128 | 2027-01-14 | 期限後、作業者が削除を提案し、利用者の確認を得てから消す | js/library.js `trkEndfieldTidyOnce` |
 | `trkEndfieldTidy2` | 一回限りの印 | trk129 | 2027-01-14 | 同上 | js/library.js `trkEndfieldShelfRestoreOnce` |
+| `trkFixedNotice` | 一回限りの印 | trk218 | 2027-02-28 | 期限後に案内終了を検討し、利用者に確認してから削除 | js/library.js `trkFixedNoticeOnce`、js/core.js |
+| `trkListed` | 保存データ（消さない） | trk218 | なし | 利用者が曲プロフィールに表示するtrkリストを覚える | js/core.js、js/library.js |
 | `ENDFIELD_FIRSTORDER_OLD_NAMES` | 旧名の表（毎回照合） | trk129 | 2027-01-14 | 同上（旧既定名は、更新で一度直れば不要になる） | js/library.js |
 | `BA_MIKA_LEGACY_PL` | 旧名の表（毎回照合） | trk159 | 2027-01-14 | 同上（trk157〜158の旧3リストを「聖園ミカ」1つへ統合） | js/library.js |
 | `trkRemoved` | 保存データ（消さない） | — | なし | 利用者が消したリストを覚える。移行ではない | js/core.js、js/library.js |

@@ -250,6 +250,25 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void upstreamFavoritesAndChartChoiceSurviveWebViewRecreation() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkFavs && !!window.Trk.core");
+            // Exercises real app JS and WebView storage; no physical touch or audio.
+            assertEquals("true", evaluate(scenario,
+                "(function(){const k='shadow_taiko_preferences_v2';localStorage.setItem('trk_test_backup',localStorage.getItem(k)||'');" +
+                "const f=window.TrkFavs;const r=f.add('song','test:upstream-fav',{group:'sub'});" +
+                "f.togglePin('song','test:upstream-fav');f.toggleLock('song','sub');" +
+                "Trk.core.settings.chartGen='3';Trk.core.settings.chartGenChosen=true;Trk.core.saveUserPrefs();" +
+                "return r.ok && JSON.parse(localStorage.getItem(k)).favs.song.sub.includes('test:upstream-fav');})()"));
+            scenario.recreate();
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkFavs && !!window.Trk.core");
+            assertEquals("true", evaluate(scenario,
+                "Boolean(TrkFavs.inGroup('song','sub','test:upstream-fav') && TrkFavs.pinned('song','test:upstream-fav') && TrkFavs.locked('song','sub') && Trk.core.settings.chartGen === '3')"));
+            evaluate(scenario, "(function(){const k='shadow_taiko_preferences_v2', b=localStorage.getItem('trk_test_backup');if(b)localStorage.setItem(k,b);else localStorage.removeItem(k);localStorage.removeItem('trk_test_backup');})()");
+        }
+    }
+
+    @Test
     public void previousButtonOptionPersistsAndControlsRestartInWebView() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && !!window.TrkMediaPlayer && !!window.Trk.core");

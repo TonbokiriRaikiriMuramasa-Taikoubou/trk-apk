@@ -488,7 +488,7 @@ function estimateLevel(notes) {
   return window.Trk.chart.cgEstimateLevel(notes);
 }
 /* ゲームの状態を変えずに譜面だけを作る（曲パックの書き出しでも使う）。
-   作り方は chartGen（設定 settings.chartGen／既定 "3" = 新方式、"1"・"2" = 旧方式1・2、"4" = 方式4・試験中）。中身は js/chart-gen.js の純関数。 */
+   作り方は chartGen（設定 settings.chartGen／既定 "4" = Bタイプ（方式4）、"3" = Aタイプ（従来）、"1"・"2" = 旧方式1・2）。中身は js/chart-gen.js の純関数。 */
 function generateNotes(diff, bpm, offset, seed, chartGen = core.settings.chartGen) {
   if (!core.videoReady || !(bpm >= 60 && bpm <= 300) || !window.Trk.data.DIFF_IDS.includes(diff)) return [];
   const rand = core.mulberry32(core.hashString(`${String(seed).trim()}|${diff}|${bpm}|${offset}`));

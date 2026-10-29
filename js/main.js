@@ -380,7 +380,7 @@ core.$("bpm").addEventListener("change", () => {
 });
 core.$("chartGen").addEventListener("change", () => {
   const value = core.$("chartGen").value;
-  core.settings.chartGen = ["1", "2", "3", "4"].includes(value) ? value : "3"; core.saveUserPrefs();   // 譜面の作り方は全曲共通の設定
+  core.settings.chartGen = ["1", "2", "3", "4"].includes(value) ? value : "4"; core.settings.chartGenChosen = true; core.saveUserPrefs();   // 譜面の作り方は全曲共通の設定
   if (core.videoReady && core.chartMode === "generated") window.Trk.media.buildChart();
 });
 core.$("offset").addEventListener("change", () => {
@@ -469,6 +469,7 @@ function syncOptionsUI() {
   if (core.$("swayAllModes")) core.$("swayAllModes").checked = !!core.settings.swayAllModes;
   if (core.$("escNoReturn")) core.$("escNoReturn").checked = !!core.settings.escNoReturn;
   if (core.$("judgeOrdered")) core.$("judgeOrdered").checked = !!core.settings.judgeOrdered;
+  if (core.$("favQuickUnfreeze")) core.$("favQuickUnfreeze").checked = !!core.settings.favQuickUnfreeze;
   if (core.$("mediaReloadOnExit")) core.$("mediaReloadOnExit").checked = !!core.settings.mediaReloadOnExit;   /* 🚪 trk206 */
   if (core.$("previousAlwaysTrack")) core.$("previousAlwaysTrack").checked = !!core.settings.previousAlwaysTrack;
   if (core.$("artWallpaperBg")) core.$("artWallpaperBg").checked = !!core.settings.artWallpaperBg;
@@ -484,7 +485,7 @@ function syncOptionsUI() {
 function optionsChanged() { core.saveUserPrefs(); syncOptionsUI(); core.emit("options"); }
 [["countdown", "countdown"], ["countdownSE", "countdownSE"], ["resumeCountdown", "resumeCountdown"],
  ["optHidden", "hidden"], ["optSudden", "sudden"], ["optMirror", "modMirror"], ["optRandom", "modRandom"],
- ["swayAllModes", "swayAllModes"], ["escNoReturn", "escNoReturn"], ["judgeOrdered", "judgeOrdered"], ["mediaReloadOnExit", "mediaReloadOnExit"], ["previousAlwaysTrack", "previousAlwaysTrack"],
+ ["swayAllModes", "swayAllModes"], ["escNoReturn", "escNoReturn"], ["judgeOrdered", "judgeOrdered"], ["favQuickUnfreeze", "favQuickUnfreeze"], ["mediaReloadOnExit", "mediaReloadOnExit"], ["previousAlwaysTrack", "previousAlwaysTrack"],
  ["artWallpaperBg", "artWallpaperBg"], ["useStudyArtwork", "useStudyArtwork"], ["hideArtworkDuringChart", "hideArtworkDuringChart"]].forEach(([id, key]) => {
   const el = core.$(id);
   if (el) el.addEventListener("change", e => { core.settings[key] = e.target.checked; optionsChanged(); });
