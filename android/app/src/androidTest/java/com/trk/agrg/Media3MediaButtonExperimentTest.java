@@ -2,6 +2,7 @@
 package com.trk.agrg;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -146,6 +147,12 @@ public class Media3MediaButtonExperimentTest {
             KeyResult play = nextEvent(player);
             assertEquals(Player.COMMAND_PLAY_PAUSE, play.command);
             assertTrue(play.play);
+            // The first toggle has completed; this is a separate single press,
+            // not a test of a double/triple tap or a physical headset.
+            sendKey(controller, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+            KeyResult pause = nextEvent(player);
+            assertEquals(Player.COMMAND_PLAY_PAUSE, pause.command);
+            assertFalse(pause.play);
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
                 if (sessionRef.get() != null) sessionRef.get().release();
