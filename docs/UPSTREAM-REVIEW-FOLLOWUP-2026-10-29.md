@@ -9,3 +9,9 @@
 - インポートは実際の設定UIのchangeイベント・保存結果をjsdomで確認。長押しはcontextmenuや中断の疑似イベントを検査。API 35エミュレーターでは実WebView上のロックにAndroid入力コマンドで0.5秒／3.5秒の固定座標スワイプを送るテストを追加した（CI結果は別途確認）。これは物理指や実端末の合格を意味しない。
 
 未検証：物理タッチ・機種差、狭画面のレイアウト、実ゲーム・実音声、PCの実バックアップファイル往復、翻訳の母語話者確認。カタログ自動更新の差分・編集保護設計は引き続き保留。
+
+## 検証結果
+
+- `344ed24`：`npm run check` 811件成功（41 suites）、`npm run cap:sync`・差分空白検査成功。
+- [API 35 emulator 40838382902](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40838382902) 成功。Android入力コマンドで短押しでは凍結維持、3.5秒で解除、48 CSS px以上をWebViewで確認。物理タッチではない。
+- [debug APK build 40838382914](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40838382914) 成功。これはテスト用debugビルドであり、正式配布版ではない。
