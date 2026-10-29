@@ -269,6 +269,50 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void favoriteFreezeLongPressReceivesAndroidTouch() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkFavs && !!window.Trk.core");
+            // A disposable test fixture made from the real favorites UI. Shell input is
+            // Android touch injection, not a physical finger or hardware long press.
+            assertEquals("true", evaluate(scenario,
+                "(function(){const k='shadow_taiko_preferences_v2';localStorage.setItem('trk_hold_backup',localStorage.getItem(k)||'');" +
+                "const f=TrkFavs;Trk.core.settings.favQuickUnfreeze=false;f.setActive('song','sub');" +
+                "if(!f.locked('song','sub')) f.toggleLock('song','sub');" +
+                "const box=f.chips('song',{groups:['sub'],onChange:()=>{}});box.id='trk-hold-fixture';" +
+                "box.style.cssText='position:fixed;left:16px;top:80px;z-index:2147483647;background:#fff';" +
+                "document.body.append(box);window._holdEvents=[];const b=box.querySelector('.favLock');" +
+                "['pointerdown','pointerup','pointercancel','contextmenu'].forEach(t=>b.addEventListener(t,()=>window._holdEvents.push(t)));" +
+                "return !!b && f.locked('song','sub');})()"));
+            try {
+                double x = Double.parseDouble(evaluate(scenario, "(()=>{let r=document.querySelector('#trk-hold-fixture .favLock').getBoundingClientRect();return r.left+r.width/2})()"));
+                double y = Double.parseDouble(evaluate(scenario, "(()=>{let r=document.querySelector('#trk-hold-fixture .favLock').getBoundingClientRect();return r.top+r.height/2})()"));
+                double viewport = Double.parseDouble(evaluate(scenario, "window.innerWidth"));
+                assertEquals("true", evaluate(scenario, "(()=>{let r=document.querySelector('#trk-hold-fixture .favLock').getBoundingClientRect();return r.width>=48 && r.height>=48})()"));
+                int[] xy = new int[2];
+                scenario.onActivity(activity -> {
+                    android.webkit.WebView web = activity.getBridge().getWebView();
+                    int[] location = new int[2]; web.getLocationOnScreen(location);
+                    double scale = web.getWidth() / viewport;
+                    xy[0] = location[0] + (int)Math.round(x * scale);
+                    xy[1] = location[1] + (int)Math.round(y * scale);
+                });
+                for (int duration : new int[]{500, 3500}) {
+                    String command = "input swipe " + xy[0] + " " + xy[1] + " " + xy[0] + " " + xy[1] + " " + duration;
+                    try (android.os.ParcelFileDescriptor fd = InstrumentationRegistry.getInstrumentation().getUiAutomation().executeShellCommand(command);
+                         java.io.InputStream in = new android.os.ParcelFileDescriptor.AutoCloseInputStream(fd)) {
+                        while (in.read() != -1) { /* wait until the gesture completes */ }
+                    }
+                    if (duration == 500) assertEquals("true", evaluate(scenario, "TrkFavs.locked('song','sub')"));
+                }
+                eventually(scenario, "!TrkFavs.locked('song','sub')");
+                assertEquals("true", evaluate(scenario, "window._holdEvents.includes('pointerdown')"));
+            } finally {
+                evaluate(scenario, "(function(){document.getElementById('trk-hold-fixture')?.remove();const k='shadow_taiko_preferences_v2',b=localStorage.getItem('trk_hold_backup');if(b)localStorage.setItem(k,b);else localStorage.removeItem(k);localStorage.removeItem('trk_hold_backup');})()");
+            }
+        }
+    }
+
+    @Test
     public void previousButtonOptionPersistsAndControlsRestartInWebView() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && !!window.TrkMediaPlayer && !!window.Trk.core");

@@ -193,6 +193,23 @@ test("real trk scripts build effects and keep the player open during navigation"
     assert.equal(w.TrkMediaPlayer.isOpen(), true);
     d.querySelector('[data-destination="player"]').click();
     assert.ok(d.querySelector(".mediaBody .mediaStage"));
+    // Drive the actual import handler, then inspect persisted JSON before its scheduled reload.
+    settings.favs = {tv:{sub:["tv-old"]},fx:{pins:["fx-old"]},song:{sub:["song-old"],pins:["keep"],locks:["frozen"],active:"sub"}};
+    settings.songFav = ["before"];
+    const imported = JSON.stringify({songFav:[" first ","first",null],favs:{song:{sub:[],pins:42},tv:false}});
+    const input = d.getElementById("emergencyImportFile");
+    Object.defineProperty(input,"files",{configurable:true,value:[{size:imported.length,text:async()=>imported}]});
+    input.dispatchEvent(new w.Event("change"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const saved=JSON.parse(w.localStorage.getItem("shadow_taiko_preferences_v2"));
+    assert.deepEqual(saved.songFav,["first"]);
+    assert.deepEqual(saved.favs.tv.sub,["tv-old"]);
+    assert.deepEqual(saved.favs.fx.pins,["fx-old"]);
+    assert.deepEqual(saved.favs.song.sub,[]);
+    assert.deepEqual(saved.favs.song.pins,["keep"]);
+    assert.match(d.getElementById("emergencyStatus").textContent,/favs\.tv/);
+    assert.match(d.getElementById("emergencyStatus").textContent,/favs\.song\.pins/);
+    assert.match(d.getElementById("emergencyStatus").textContent,/songFav/);
     assert.deepEqual(failures, []);
   } finally {
     if (dom) dom.window.close();

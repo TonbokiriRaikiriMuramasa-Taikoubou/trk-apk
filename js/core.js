@@ -95,6 +95,48 @@ function cleanTvParamFavorites(v) {
   }
   return out;
 }
+/* Favorite backups may contain only some kinds or fields. Missing data is
+   preserved; malformed fields are reported, not silently converted to empty. */
+function cleanSongFav(v) {
+  if (!Array.isArray(v)) return [];
+  return [...new Set(v.filter(k => typeof k === "string" && k.trim()).map(k => k.trim().slice(0, 200)))].slice(0, 2000);
+}
+function mergeImportedFavs(current, incoming) {
+  const out = current && typeof current === "object" && !Array.isArray(current) ? { ...current } : {};
+  const errors = [], applied = [];
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) return { value:out, applied, errors:["favs"] };
+  for (const kind of ["tv", "fx", "song"]) {
+    if (!Object.prototype.hasOwnProperty.call(incoming, kind)) continue;
+    const source = incoming[kind];
+    if (!source || typeof source !== "object" || Array.isArray(source)) { errors.push("favs." + kind); continue; }
+    const old = out[kind];
+    const next = old && typeof old === "object" && !Array.isArray(old) ? { ...old } : {};
+    let changed = false;
+    for (const field of ["sub", "frozen", "former", "pins", "locks", "active"]) {
+      if (!Object.prototype.hasOwnProperty.call(source, field)) continue;
+      const value = source[field], label = "favs." + kind + "." + field;
+      if (field === "active") {
+        if (!["main", "sub", "frozen", "former"].includes(value)) { errors.push(label); continue; }
+        next.active = value; changed = true; continue;
+      }
+      if (!Array.isArray(value) || value.some(id => typeof id !== "string")) { errors.push(label); continue; }
+      if (field === "locks") {
+        if (value.some(id => !["main", "sub", "frozen"].includes(id))) { errors.push(label); continue; }
+        next.locks = [...new Set(value)].slice(0, 3);
+      } else {
+        const cleaned = value.map(id => id.trim().slice(0, 200));
+        if (cleaned.some(id => !id || (kind !== "song" && !/^[A-Za-z0-9_:.\-]{1,64}$/.test(id)))) { errors.push(label); continue; }
+        next[field] = [...new Set(cleaned)].slice(0, 2000);
+        if (new Set(cleaned).size > 2000) errors.push(label);
+      }
+      changed = true;
+    }
+    for (const field of Object.keys(source)) if (!["sub", "frozen", "former", "pins", "locks", "active"].includes(field)) errors.push("favs." + kind + "." + field);
+    if (changed) { out[kind] = next; applied.push(kind); }
+  }
+  for (const key of Object.keys(incoming)) if (!["tv", "fx", "song"].includes(key)) errors.push("favs." + key);
+  return { value:out, applied, errors };
+}
 /* 🗑 消した trk の自動リストのID（library.js が作り直さないための印）。trk- で始まるIDだけ、重複なし・200件まで */
 function cleanTrkRemoved(v) {
   if (!Array.isArray(v)) return [];
@@ -226,7 +268,7 @@ const settings = {
   /* ⭐ お気に入りのフォルダ（1軍／2軍／🧊フリーズ／📤元お気に入り・📌ピン・凍結）の保存先（trk215）。
      1軍だけはこれまでどおり tvFav／fxFav／songFav。js/favs.js が保存のたびに書き込みます。 */
   favs: (prefs.favs && typeof prefs.favs === "object" && !Array.isArray(prefs.favs)) ? prefs.favs : {},
-  songFav: Array.isArray(prefs.songFav) ? [...new Set(prefs.songFav.filter(k => typeof k === "string" && k.trim()).map(k => k.trim().slice(0, 200)))].slice(0, 2000) : [],
+  songFav: cleanSongFav(prefs.songFav),
   artWallpaperBg: prefs.artWallpaperBg === true,                     // 🖼 静止画を全画面へ拡大（オフは譜面中は右上、他は原寸以下で動画枠中央）
   useStudyArtwork: prefs.useStudyArtwork === true,                   // 📚 書斎で割り当てた画像をTV／ゲーム背景にも使う（既定オフ）
   hideArtworkDuringChart: prefs.hideArtworkDuringChart === true,     // 🎼 譜面中は静止画を隠す（既定オフ）
@@ -1457,10 +1499,19 @@ function renderStoragePersist(state) {
           rejectedKeys.add(k);
           rejected.push(tr(SKIP_WHY[why] || SKIP_WHY.unknown, { k }));
         };
+        if (hasImported("songFav") && Array.isArray(data.songFav)) {
+          settings.songFav = cleanSongFav(data.songFav); applied.push("songFav");
+          if (data.songFav.some(k => typeof k !== "string" || !k.trim()) || settings.songFav.length >= 2000 && new Set(data.songFav.filter(k => typeof k === "string" && k.trim()).map(k => k.trim().slice(0, 200))).size > 2000) reject("songFav", "type");
+        }
+        if (hasImported("favs")) {
+          const merged = mergeImportedFavs(settings.favs, data.favs);
+          if (merged.applied.length || !merged.errors.length) { settings.favs = merged.value; applied.push("favs"); }
+          for (const key of merged.errors) reject(key, "type");
+        }
         // 既知キーだけを取り込み、型と列挙IDは代入前に検証する。
         // ⚠ 弾いたキーは黙って捨てない（「読み込みました」なのに反映されない事故を防ぐ）。最後にまとめて報告する。
         for (const k of Object.keys(data)) {
-          if (UNSAFE_KEYS.has(k) || ["notes", "videoStyle", "tvDockSkin", "bgDim", "bgBlur", "tvParamFavs", "trkRemoved", "trkListed", "trkFixedNotice", "musicVolume", "musicVolumeRestore"].includes(k) || applied.includes(k)) continue;
+          if (UNSAFE_KEYS.has(k) || ["notes", "videoStyle", "tvDockSkin", "bgDim", "bgBlur", "tvParamFavs", "trkRemoved", "trkListed", "trkFixedNotice", "songFav", "favs", "musicVolume", "musicVolumeRestore"].includes(k) || applied.includes(k)) continue;
           if (!Object.prototype.hasOwnProperty.call(settings, k)) { reject(k, "unknown"); continue; }
           const current = settings[k], incoming = data[k];
           const sameShape = Array.isArray(current) ? Array.isArray(incoming)

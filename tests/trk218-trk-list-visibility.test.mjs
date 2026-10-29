@@ -24,7 +24,6 @@ function sandbox(settings) {
     console, settings,
     core: { settings, saveUserPrefs: () => { calls.saves++; } },
     PL_COLORS: { none: "none" },
-    plGuideSanitize: g => g,
     plToast: msg => calls.toasts.push(msg),
     tr: key => ({ trkCopySuffix: "（コピー）", trkFixedNotice: "固定の案内" })[key] ?? key
   });
@@ -32,6 +31,7 @@ function sandbox(settings) {
     slice("const TRK_AUTO_ID", "\nfunction trkMarkRemoved("),
     slice("function plIsTrkManaged(", "\n/* 🐔 trk218：trk が作った"),
     slice("function trkIsFixedList(", "\nfunction renderTrkSettings()"),
+    slice("function plGuideSanitize(", "\nfunction plGuideJa("),
     slice("function plSanitize(", "\nconst TRK_PLAYLIST_ID"),
     `globalThis.__api = { trkIsFixedList, trkListShown, trkListSetShown, trkCopyAsUser, trkFixedNoticeOnce };`
   ].join("\n"), context);
@@ -91,6 +91,9 @@ describe("trk218 編集できるコピー（📋）", () => {
     assert.equal(copy.name, "Sessions: Vi（コピー）");
     assert.equal(copy.folder, "", "編集や移動ができるよう通常の棚に置く");
     assert.equal(copy.cat, "", "カタログの自動更新と切り離す");
+    assert.notEqual(copy.guide, original.guide);
+    copy.guide.note = "changed";
+    assert.equal(original.guide.note, "note", "guide is not shared with the original");
     assert.deepEqual([...copy.songs], ["k1", "k2"]);
     assert.deepEqual([...copy.wish].map(w => w.t), ["w1"], "欲しい曲も引き継ぐ（形は plSanitize が整える）");
     assert.equal(copy.guide.url, "https://example.com");
@@ -182,15 +185,15 @@ describe("trk218 配線", () => {
   });
 
   test("文言は4言語そろっている", () => {
-    const textBlocks = library.match(/^Object\.assign\(TEXT\.(?:ja|en|zh|ko), \{[\s\S]*?^\}\);$/gm).join("\n");
-    for (const key of ["trkListShow", "trkListHide", "trkListShown", "trkListHidden", "trkListNote",
-      "trkCopyBtn", "trkCopyDone", "trkCopyFail", "trkCopySuffix", "plInListsHidden", "trkFixedNotice"]) {
-      assert.equal((textBlocks.match(new RegExp(`\\b${key}:`, "g")) || []).length, 4, `${key} は4言語`);
+    const blocks = [...library.matchAll(/^Object\.assign\(TEXT\.(ja|en|zh|ko), \{([\s\S]*?)^\}\);$/gm)];
+    for (const lang of ["ja", "en", "zh", "ko"]) for (const key of ["trkListShow", "trkListHide", "trkListShown", "trkListHidden", "trkListNote", "trkCopyBtn", "trkCopyDone", "trkCopyFail", "trkCopySuffix", "plInListsHidden", "trkFixedNotice"]) {
+      const body = blocks.filter(b => b[1] === lang).map(b => b[2]).join("\n");
+      assert.equal((body.match(new RegExp(`\\b${key}:`, "g")) || []).length, 1, `${lang}.${key} occurs once`);
     }
   });
 
   test("Service Worker の cache を上げている", () => {
     const sw = fs.readFileSync(`${ROOT}/sw.js`, "utf8");
-    assert.match(sw, /^const CACHE = "trk-v2026\.10\.29-trk219";$/m);
+    assert.match(sw, /^const CACHE = "trk-v2026\.10\.29-trk220";$/m);
   });
 });

@@ -1721,6 +1721,7 @@ body.plDragging .libTab[data-pl]{outline:1px dashed var(--ui-border);outline-off
 .favLock.on{background:#4a6ea8;color:#fff;border-color:transparent}
 /* 🔒 trk215：凍結の解除は3秒長押し。押している間、下に3秒ぶんのバーが出る（残りが見える） */
 .favLock,.favChip{position:relative;overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none}
+.favLock.favHold,.favChip.favHold{touch-action:none;-webkit-user-select:none;user-select:none}
 .favLock.holding::after,.favChip.holding::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;
   background:var(--ui-accent);animation:favHoldBar 3s linear forwards}
 @keyframes favHoldBar{from{width:0}to{width:100%}}

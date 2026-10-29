@@ -501,18 +501,25 @@ function menuButton(kind, id, cls) {
 /* 🔒 trk215：長押し（既定3秒）で1回だけ動かすボタン。キーボード（Enter／Space）でも同じ。
    押し始めると .holding が付き、CSS のバーが3秒で伸びる（解除までの残りが見える）。
    長押しが成立したあとの click は捨てる（同じボタンの click＝フォルダを開く を二重に走らせない）。 */
+const activeFavoriteHolds = new Set();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) for (const cancel of [...activeFavoriteHolds]) cancel();
+});
+window.addEventListener("blur", () => { for (const cancel of [...activeFavoriteHolds]) cancel(); });
 function holdButton(btn, ms, onDone, onShort) {
   if (!(ms > 0)) {
     btn.addEventListener("click", e => { e.preventDefault(); onDone(); });
     return;
   }
+  btn.classList.add("favHold");
   let timer = 0, done = false;
-  const stop = () => { if (timer) { clearTimeout(timer); timer = 0; } btn.classList.remove("holding"); };
+  const stop = () => { if (timer) { clearTimeout(timer); timer = 0; } activeFavoriteHolds.delete(stop); btn.classList.remove("holding"); };
   const start = () => {
     if (timer || done) return;
     btn.classList.add("holding");
+    activeFavoriteHolds.add(stop);
     timer = setTimeout(() => {
-      timer = 0; btn.classList.remove("holding");
+      timer = 0; activeFavoriteHolds.delete(stop); btn.classList.remove("holding");
       if ((typeof document !== "undefined" && document.hidden) || ("isConnected" in btn && !btn.isConnected)) return;
       done = true;
       try { onDone(); } catch (e) { console.error(e); }
@@ -524,7 +531,8 @@ function holdButton(btn, ms, onDone, onShort) {
     if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); start(); }
   });
   btn.addEventListener("keyup", e => { if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") stop(); });
-  btn.addEventListener("contextmenu", e => { e.preventDefault(); stop(); });   /* スマホの長押しメニューを出さない */
+  // WebView may fire contextmenu before the 3s timer. Suppress the menu, not the hold.
+  btn.addEventListener("contextmenu", e => { e.preventDefault(); });
   btn.addEventListener("click", e => {
     if (done) { done = false; e.preventDefault(); e.stopImmediatePropagation(); return; }
     stop();

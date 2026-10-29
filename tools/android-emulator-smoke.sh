@@ -55,7 +55,8 @@ intent_class = 'com.trk.agrg.Media3IntentExperimentTest'
 session_class = 'com.trk.agrg.Media3SessionExperimentTest'
 button_class = 'com.trk.agrg.Media3MediaButtonExperimentTest'
 expected_by_class = {
-    smoke_class: {'upstreamFavoritesAndChartChoiceSurviveWebViewRecreation',
+    smoke_class: {'favoriteFreezeLongPressReceivesAndroidTouch',
+                  'upstreamFavoritesAndChartChoiceSurviveWebViewRecreation',
                   'previousButtonOptionPersistsAndControlsRestartInWebView',
                   'freshStartupBackAndNativeOrientationBridge',
                   'rendererCrashShowsRecoveryAndRetryStartsGuarded',

@@ -244,5 +244,5 @@ test("trk215: the new wording is in all four languages", () => {
 });
 
 test("trk215: the service worker cache name moves on so the new files are fetched", () => {
-  assert.ok(swSrc.includes("trk-v2026.10.29-trk219"), "CACHE を更新");
+  assert.ok(swSrc.includes("trk-v2026.10.29-trk220"), "CACHE を更新");
 });

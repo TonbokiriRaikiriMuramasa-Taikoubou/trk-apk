@@ -2,7 +2,7 @@
 /* trk! offline shell: network first, cached same-origin app files as a fallback.
    Exception: the hash-pinned vendor files (assets/vendor, tools/vendor-lock.json) are cache-first,
    but a cached copy is used only when its SHA-384 matches the pin below. */
-const CACHE = "trk-v2026.10.29-trk219";
+const CACHE = "trk-v2026.10.29-trk220";
 const CACHE_PREFIX = "trk-";
 const SCOPE = new URL(self.registration.scope);
 const VENDOR_PREFIX = "assets/vendor/";

@@ -102,3 +102,7 @@ cd android && ./gradlew assembleDebug
 | `js/apk-settings-panels.js`, `js/synth-mode.js`, `js/core.js` | 設定の開閉、シンセ初期値と保存 |
 | `android/`, `capacitor.config.ts`, `tools/prepare-mobile-web.mjs` | AndroidシェルとWeb資産の同期 |
 | `.github/workflows/`, `tests/apk-*.test.mjs`, `android/app/src/androidTest/` | debugビルド、JS回帰・エミュレーター検査 |
+
+### PC版1.1.5〜1.1.7取り込み後のレビュー対応（2026-10-29）
+
+長押し、多言語、部分バックアップのデータ保護を修正。第三者パッチは全文確認の上、欠落項目を空にしないよう変更して統合した。詳細・未検証項目は `docs/UPSTREAM-REVIEW-FOLLOWUP-2026-10-29.md` を参照。API 35のAndroid入力注入検査は物理実機の代替ではない。

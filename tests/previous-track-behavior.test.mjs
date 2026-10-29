@@ -104,5 +104,5 @@ test("player controls, keyboard, banner and TV previous share the restart decisi
   for (const path of ["js/library.js", "js/tv-dock.js"]) {
     assert.match(read(path), /dir < 0 && window\.TrkMediaPlayer\?\.restartForPrevious\?\.\(\)/);
   }
-  assert.match(read("sw.js"), /const CACHE = "trk-v2026\.10\.29-trk219"/);
+  assert.match(read("sw.js"), /const CACHE = "trk-v2026\.10\.29-trk220"/);
 });
