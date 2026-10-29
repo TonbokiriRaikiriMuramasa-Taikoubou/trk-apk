@@ -22,7 +22,11 @@ echo '::notice::Running app instrumentation on the disposable emulator'
 ./gradlew --no-daemon :app:connectedDebugAndroidTest 2>&1 | tee /tmp/trk-emulator-gradle.log
 status=${PIPESTATUS[0]}
 if (( status != 0 )); then
-  tail -n 80 /tmp/trk-emulator-gradle.log | sed 's/^/::error::/'
+  # GitHub limits check annotations. Emit likely causes first rather than filling
+  # the limit with ordinary Gradle task names; keep the full tail in the log.
+  echo '::error::App instrumentation or its Android build failed; see the Gradle log below'
+  grep -Ei '(^FAILURE:|^\* What went wrong:|^Execution failed|^> (Execution failed|Could not|Failed|A failure)|^Caused by:|^error:|fatal error|outofmemoryerror|no space left on device|timed out|connection reset)' /tmp/trk-emulator-gradle.log | tail -n 7 | sed 's/^/::error::/' || true
+  tail -n 80 /tmp/trk-emulator-gradle.log
   # A crashing instrumentation process may not leave JUnit results. The
   # disposable emulator's filtered logcat helps diagnose that case.
   adb logcat -d -t 1500 -s AndroidRuntime:E ActivityManager:W ActivityTaskManager:W TestRunner:I '*:S' | tail -n 120 | sed 's/^/::error::/' || true
