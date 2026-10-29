@@ -42,6 +42,7 @@ dependencies {
     // Test APK only: examine SimpleBasePlayer's async state semantics before
     // choosing an adapter. The production app does not yet depend on Media3.
     androidTestImplementation "androidx.media3:media3-common:1.11.1"
+    androidTestImplementation "androidx.media3:media3-session:1.11.1"
     implementation project(':capacitor-cordova-android-plugins')
 }
 

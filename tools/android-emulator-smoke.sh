@@ -51,6 +51,7 @@ import glob, sys, xml.etree.ElementTree as ET
 smoke_class = 'com.trk.agrg.AndroidWebViewSmokeTest'
 barrier_class = 'com.trk.agrg.Media3BarrierExperimentTest'
 intent_class = 'com.trk.agrg.Media3IntentExperimentTest'
+session_class = 'com.trk.agrg.Media3SessionExperimentTest'
 expected_by_class = {
     smoke_class: {'freshStartupBackAndNativeOrientationBridge',
                   'rendererCrashShowsRecoveryAndRetryStartsGuarded',
@@ -66,6 +67,7 @@ expected_by_class = {
     intent_class: {'intentUpdateIsImmediateButPauseCanMisrepresentRemotePlayback',
                    'intentTimeoutAndStaleReplyDoNotProveSilenceOrCompleteNewCommand',
                    'intentListenerCanInterruptSynchronouslyWithoutPendingPlayerFuture'},
+    session_class: {'sessionAndPlatformControllerCanReportPauseBeforeFakeRemoteStops'},
 }
 expected = {(class_name, name) for class_name, names in expected_by_class.items() for name in names}
 found = {}
@@ -83,7 +85,7 @@ if missing:
     print('::error::Expected Android smoke test results are missing: ' + ', '.join('.'.join(key) for key in sorted(missing)))
     sys.exit(1)
 # The GitHub check can truncate annotations; put the new Media3 checks first.
-for (class_name, name), case in sorted(found.items(), key=lambda item: (item[0][0] != intent_class, item[0][1])):
+for (class_name, name), case in sorted(found.items(), key=lambda item: (item[0][0] != session_class, item[0][1])):
     if case.find('failure') is not None or case.find('error') is not None:
         print('::error::Smoke test failed: ' + name)
         sys.exit(1)

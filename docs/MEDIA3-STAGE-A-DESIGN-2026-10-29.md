@@ -62,6 +62,10 @@ Playerの状態変更リスナーからの再入と、Media3より前にFuture�
 
 この割当ては実APIに適合する設計として承認したものではない。[公式Player定義](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/Player.java)では `playWhenReady` は意図、`isPlaying` は位置が進みメディアが提示されている状態、`STATE_BUFFERING` はすぐに再生できず再生準備中、`STATE_IDLE` は停止／失敗などで通常 `prepare()` が必要な状態。停止要求中もWeb側が実際に再生している状況へこれらを割り当てると矛盾し得る。意図更新だけで `handleSetPlayWhenReady` のFutureを完了することがAPI契約上適切かも未決。MediaSession／通知が各値をどう解釈するかを検証するまでは採用しない。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）で3検査が成功した。仮のplayは意図が即時trueとなり、結果待ちに `isPlaying=false`、成功応答後にtrueとなった。一方、仮のpauseは応答前から `isPlaying=false` になり、**独立した偽の遠隔再生フラグはtrueのまま**だった。失敗・タイムアウト・遅延応答後も「表示が停止」だけでは遠隔消音を証明できない。同期リスナーからの遮断・再入と古い応答の拒否もこの限定された模型で確認した。実通信・音声や全ての再入経路の検証ではない。
 
+### MediaSession・コントローラーへの伝播（CI実行待ち）
+
+テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。CI成功までは結果未確認。
+
 ## サービス・フォーカス・検証順
 
 - フォアグラウンドサービスは起動条件、通知、権限、Androidバージョン別制限を確認し、適法に開始できない場合はエラーを示して既存再生の状態と矛盾させない。Media3の通知・セッションとChromiumとの重複を実機で調べる。通知を出しただけでWebViewが生存する保証はない。
