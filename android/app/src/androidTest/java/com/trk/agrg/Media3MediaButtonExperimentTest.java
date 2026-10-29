@@ -30,12 +30,12 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 @UnstableApi
 public class Media3MediaButtonExperimentTest {
-    private static final class Event {
+    private static final class KeyResult {
         final int command;
         final int index;
         final long positionMs;
         final Boolean play;
-        Event(int command, int index, long positionMs, Boolean play) {
+        KeyResult(int command, int index, long positionMs, Boolean play) {
             this.command = command;
             this.index = index;
             this.positionMs = positionMs;
@@ -44,7 +44,7 @@ public class Media3MediaButtonExperimentTest {
     }
 
     private static final class NavigationPlayer extends SimpleBasePlayer {
-        final BlockingQueue<Event> events = new LinkedBlockingQueue<>();
+        final BlockingQueue<KeyResult> events = new LinkedBlockingQueue<>();
         final boolean enablePreviousGeneral;
         int index = 1;
         long positionMs = 10_000;
@@ -78,11 +78,11 @@ public class Media3MediaButtonExperimentTest {
         }
         @Override protected ListenableFuture<?> handleSetPlayWhenReady(boolean value) {
             playing = value;
-            events.add(new Event(Player.COMMAND_PLAY_PAUSE, index, positionMs, value));
+            events.add(new KeyResult(Player.COMMAND_PLAY_PAUSE, index, positionMs, value));
             return Futures.immediateVoidFuture();
         }
         @Override protected ListenableFuture<?> handleSeek(int itemIndex, long newPositionMs, int command) {
-            events.add(new Event(command, itemIndex, newPositionMs, null));
+            events.add(new KeyResult(command, itemIndex, newPositionMs, null));
             if (itemIndex != C.INDEX_UNSET) {
                 index = itemIndex;
                 positionMs = newPositionMs == C.TIME_UNSET ? 0 : newPositionMs;
@@ -99,8 +99,8 @@ public class Media3MediaButtonExperimentTest {
         });
     }
 
-    private static Event nextEvent(NavigationPlayer player) throws InterruptedException {
-        Event event = player.events.poll(20, TimeUnit.SECONDS);
+    private static KeyResult nextEvent(NavigationPlayer player) throws InterruptedException {
+        KeyResult event = player.events.poll(20, TimeUnit.SECONDS);
         assertNotNull("Expected the synthetic media key to reach the fake player", event);
         return event;
     }
@@ -123,14 +123,14 @@ public class Media3MediaButtonExperimentTest {
             NavigationPlayer player = playerRef.get();
             android.media.session.MediaController controller = controllerRef.get();
             sendKey(controller, KeyEvent.KEYCODE_MEDIA_PREVIOUS);
-            Event previous = nextEvent(player);
+            KeyResult previous = nextEvent(player);
             if (enablePreviousGeneral) {
                 // The normal Media3 command restarts the current item after the threshold.
                 assertEquals(Player.COMMAND_SEEK_TO_PREVIOUS, previous.command);
                 assertEquals(1, previous.index);
                 assertEquals(0, previous.positionMs);
                 sendKey(controller, KeyEvent.KEYCODE_MEDIA_PREVIOUS);
-                Event previousAgain = nextEvent(player);
+                KeyResult previousAgain = nextEvent(player);
                 assertEquals(Player.COMMAND_SEEK_TO_PREVIOUS, previousAgain.command);
                 assertEquals(0, previousAgain.index);
             } else {
@@ -139,11 +139,11 @@ public class Media3MediaButtonExperimentTest {
                 assertEquals(0, previous.index);
             }
             sendKey(controller, KeyEvent.KEYCODE_MEDIA_NEXT);
-            Event next = nextEvent(player);
+            KeyResult next = nextEvent(player);
             assertEquals(Player.COMMAND_SEEK_TO_NEXT, next.command);
             assertEquals(1, next.index);
             sendKey(controller, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-            Event play = nextEvent(player);
+            KeyResult play = nextEvent(player);
             assertEquals(Player.COMMAND_PLAY_PAUSE, play.command);
             assertTrue(play.play);
         } finally {
