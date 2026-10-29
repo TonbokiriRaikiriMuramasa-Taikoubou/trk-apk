@@ -46,6 +46,15 @@ test('resume signals output recovery once per interruption and only after cleari
   x.listeners.audioBecomingNoisy(); x.listeners.audioBecomingNoisy(); x.core.audioSafety.resume(); x.core.audioSafety.resume(); assert.equal(resumed,1);
   const y=setup(true,true); let recovery=0; y.core.on('audioOutputResumed',()=>recovery++); y.core.audioSafety.resume(); assert.equal(recovery,1);
 });
+test('failed output restoration re-latches playback and preserves renderer acknowledgement until a successful retry',async()=>{
+  const x=setup(true,true); let fails=true;
+  x.core.on('audioOutputResumed',()=>{if(fails) x.core.audioSafety.interrupt();});
+  assert.equal(x.core.audioSafety.resume(),false); assert.equal(x.core.audioSafety.blocked(),true);
+  assert.equal(x.core.audioSafety.version(),1); assert.ok(!x.calls.includes('ack'));
+  await assert.rejects(x.video.play(),{name:'AbortError'});
+  fails=false; assert.equal(x.core.audioSafety.resume(),true); assert.equal(x.core.audioSafety.blocked(),false);
+  assert.equal(x.calls.filter(v=>v==='ack').length,1);
+});
 test('web does not install the Android output policy',()=>{
   const x=setup(false); assert.equal(x.core.audioSafety,undefined); assert.equal(x.listeners.audioBecomingNoisy,undefined);
 });
