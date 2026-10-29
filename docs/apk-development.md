@@ -1,5 +1,7 @@
 # trk! Android 版：初期実装と今後の確認
 
+> 以下は初期実装時の詳細記録を含みます。検証状況の最新は [HANDOFF](HANDOFF.md)、APK署名・配布準備は [APK配布準備](APK-DISTRIBUTION.md) を参照してください。API 35エミュレーター上のWebView試験は実施済みですが、物理端末は未検証です。
+
 ## 取り込み元
 
 GitHub `TonbokiriRaikiriMuramasa-Taikoubou/trk` の main、コミット `2b3383dc5051eb561213a7d4f875307a9e02b975` を取り込んだ。上流の `docs/HANDOFF.md` はこの本体を trk214／1.1.4 と記載している。Drive の配布 ZIP を取得・比較したわけではない。上流のライセンス・NOTICE・アセット・テストを残し、APK 用の画面と Android プロジェクトを追加している。上流の詳細は `docs/HANDOFF-UPSTREAM-trk214.md` に保存。
