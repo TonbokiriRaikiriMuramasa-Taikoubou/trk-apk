@@ -36,6 +36,7 @@ import glob, sys, xml.etree.ElementTree as ET
 expected = {'freshStartupBackAndNativeOrientationBridge',
             'rendererCrashShowsRecoveryAndRetryStartsGuarded',
             'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
+            'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
             'pictureInPictureRatioUsesVideoAndAndroidLimits',
             'nativePictureInPictureEntryNotifiesWebView'}
 found = {}

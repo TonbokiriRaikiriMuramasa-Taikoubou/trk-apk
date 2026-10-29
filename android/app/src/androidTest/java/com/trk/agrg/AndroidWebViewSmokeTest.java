@@ -156,6 +156,33 @@ public class AndroidWebViewSmokeTest {
     }
 
     @Test
+    public void fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            eventually(scenario, "document.readyState === 'complete' && !!window.TrkFX && !!Trk.core.audioSafety");
+            // Real WebView/AudioContext, but an injected exception and a simulated
+            // plugin callback. This is not a physical disconnect or audio test.
+            assertEquals("true", evaluate(scenario,
+                "Boolean(TrkFX.select('piano') && Trk.media.audioCtx && document.getElementById('apkFxRecoveryNotice').hidden)"));
+            evaluate(scenario, "window._fxBefore=JSON.stringify(TrkFX.current()); window._fxGain=Trk.media.audioCtx.createGain.bind(Trk.media.audioCtx)");
+            scenario.onActivity(activity -> {
+                TrkDevicePlugin device = (TrkDevicePlugin) activity.getBridge().getPlugin("TrkDevice").getInstance();
+                assertNotNull(device); device.audioOutputBecameNoisy();
+            });
+            eventually(scenario, "Trk.core.audioSafety.blocked()");
+            evaluate(scenario, "Trk.media.audioCtx.createGain=()=>{throw new Error('instrumented failure')}; window._fxResume=Trk.core.audioSafety.resume()");
+            eventually(scenario, "window._fxResume === false && Trk.core.audioSafety.blocked() && !document.getElementById('apkFxRecoveryNotice').hidden");
+            assertEquals("true", evaluate(scenario,
+                "Boolean(document.getElementById('apkFxRecoveryNotice').getBoundingClientRect().height > 0 && Trk.core.video.paused)"));
+            evaluate(scenario, "window._fxPlay='pending'; Trk.core.video.play().then(()=>window._fxPlay='played',e=>window._fxPlay=e.name)");
+            eventually(scenario, "window._fxPlay === 'AbortError'");
+            evaluate(scenario, "Trk.media.audioCtx.createGain=window._fxGain; window._fxRetry=Trk.core.audioSafety.resume()");
+            eventually(scenario, "window._fxRetry === true && !Trk.core.audioSafety.blocked() && document.getElementById('apkFxRecoveryNotice').hidden");
+            assertEquals("true", evaluate(scenario,
+                "Boolean(Trk.core.video.paused && JSON.stringify(TrkFX.current()) === window._fxBefore)"));
+        }
+    }
+
+    @Test
     public void freshStartupBackAndNativeOrientationBridge() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             eventually(scenario, "document.readyState === 'complete' && window.Trk && window.Trk.core && document.querySelectorAll('.apk-nav button').length === 5 && document.getElementById('welcomeBox') && !document.getElementById('welcomeBox').hidden");
