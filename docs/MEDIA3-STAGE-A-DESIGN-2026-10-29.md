@@ -44,11 +44,11 @@ Android計測テストだけで Apache-2.0 の `androidx.media3:media3-common:1.
 
 [同バージョンの公式実装](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/SimpleBasePlayer.java)上、標準のplaceholderは操作成功を先読みする。`getPlaceholderState()` を上書きできる一方、保留中は `invalidateState()` を呼んでも即時には反映されず、保留操作がすべて終了するまで状態更新が遅れる。試験では、未完了のplayが既定placeholderで `isPlaying=true` となり、失敗で確認済み状態に戻った。確認済み状態を返すplaceholderなら未確認のplay表示を避けられたが、逆にpause保留中に実際の状態を停止へ変え `invalidateState()` しても、Future完了まで `isPlaying=true` のままだった。緊急停止の反映と保留Futureの整理を設計せずに、単にplaceholderを上書きすれば安全になるとは考えない。ライブラリは `@UnstableApi` のため、採用候補を変えた際も同じ検証が必要。
 
-### 優先停止・古い応答の試作検査（CI実行待ち）
+### 優先停止・古い応答の試作検査（API 35エミュレーター）
 
 テストAPK内だけの `SafetyProjectionPlayer` で、遮断フラグとgenerationを先に変更し、保留Futureを整理して表示を `STATE_IDLE`／play不可へ移す案を検査する。これは**確認済み消音ではなく、実状態不明・利用不可の表示**。停止要求の実配送、タイムアウト、時刻、実WebView・Bridge・リモート再生は実装しない。再接続時のepoch、generation、revisionと保留命令の一致を仮定し、古い応答や重複応答が新しい命令を完了させないことを確認する。認可済み再開も試験用の直接操作であり、実OSコマンドの認証・自動再開対策の実装ではない。
 
-複数Futureを逐次キャンセルする間に、そのFutureのリスナーが同期的に再入する反例も検査する。保留操作が残っていれば `SimpleBasePlayer` のcached stateはまだ古く、再入時に再生中と読める可能性があるため、フラグ変更とFutureの逐次整理だけを原子的な状態切替とみなさない。コマンド処理側でも遮断を確認し、リスナーの実行順・再入、複数保留、寿命管理を含む別の設計と検証が必要。以下の結果はCI成功まで未確認。
+複数Futureを逐次キャンセルする間に、そのFutureのリスナーが同期的に再入する反例も検査する。保留操作が残っていれば `SimpleBasePlayer` のcached stateはまだ古く、再入時に再生中と読める可能性があるため、フラグ変更とFutureの逐次整理だけを原子的な状態切替とみなさない。コマンド処理側でも遮断を確認し、リスナーの実行順・再入、複数保留、寿命管理を含む別の設計と検証が必要。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40815605797)（`5e0702a`）で上記の2検査が成功。具体的には、2個の保留Futureのうち先に取り消したFutureの同期リスナーから、残る保留中に古い `isPlaying=true` と古いコマンド可否を観測できた。リスナーからのplay再入はハンドラー内の遮断確認で新命令を発行せず、整理完了後は `STATE_IDLE`・play不可になった。これは再入問題の解決を示すものではなく、観測し得る範囲と別途必要な対策を示す反例。
 
 ## サービス・フォーカス・検証順
 
