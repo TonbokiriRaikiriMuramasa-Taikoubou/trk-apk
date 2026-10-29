@@ -44,15 +44,22 @@ else
   # A green Gradle exit is not enough if no instrumentation tests were run.
   python3 - <<'PY'
 import glob, sys, xml.etree.ElementTree as ET
-expected = {'freshStartupBackAndNativeOrientationBridge',
-            'rendererCrashShowsRecoveryAndRetryStartsGuarded',
-            'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
-            'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
-            'media3PendingOperationsUsePlaceholderAndDeferInvalidation',
-            'media3InterruptDrainsPendingButReentrantReadCanSeeStaleState',
-            'media3InterruptedGenerationAndOldEpochCannotCompleteNewPlay',
-            'pictureInPictureRatioUsesVideoAndAndroidLimits',
-            'nativePictureInPictureEntryNotifiesWebView'}
+smoke_class = 'com.trk.agrg.AndroidWebViewSmokeTest'
+barrier_class = 'com.trk.agrg.Media3BarrierExperimentTest'
+expected_by_class = {
+    smoke_class: {'freshStartupBackAndNativeOrientationBridge',
+                  'rendererCrashShowsRecoveryAndRetryStartsGuarded',
+                  'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
+                  'fxRestorationFailureShowsNoticeAndKeepsPlaybackBlocked',
+                  'media3PendingOperationsUsePlaceholderAndDeferInvalidation',
+                  'media3InterruptDrainsPendingButReentrantReadCanSeeStaleState',
+                  'media3InterruptedGenerationAndOldEpochCannotCompleteNewPlay',
+                  'pictureInPictureRatioUsesVideoAndAndroidLimits',
+                  'nativePictureInPictureEntryNotifiesWebView'},
+    barrier_class: {'sharedBarrierDefersUpdatesAndBlocksListenerReentry',
+                    'sharedBarrierCannotPreventAnEarlierCompletionListenerSeeingStaleState'},
+}
+expected = {(class_name, name) for class_name, names in expected_by_class.items() for name in names}
 found = {}
 for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml', recursive=True):
     try:
@@ -60,13 +67,14 @@ for path in glob.glob('app/build/outputs/androidTest-results/connected/**/*.xml'
     except ET.ParseError:
         continue
     for case in root.iter('testcase'):
-        if case.get('classname') == 'com.trk.agrg.AndroidWebViewSmokeTest' and case.get('name') in expected:
-            found[case.get('name')] = case
+        key = (case.get('classname'), case.get('name'))
+        if key in expected:
+            found[key] = case
 missing = expected - found.keys()
 if missing:
-    print('::error::Expected Android smoke test results are missing: ' + ', '.join(sorted(missing)))
+    print('::error::Expected Android smoke test results are missing: ' + ', '.join('.'.join(key) for key in sorted(missing)))
     sys.exit(1)
-for name, case in found.items():
+for (class_name, name), case in found.items():
     if case.find('failure') is not None or case.find('error') is not None:
         print('::error::Smoke test failed: ' + name)
         sys.exit(1)
