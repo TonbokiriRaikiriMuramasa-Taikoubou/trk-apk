@@ -62,9 +62,11 @@ Playerの状態変更リスナーからの再入と、Media3より前にFuture�
 
 この割当ては実APIに適合する設計として承認したものではない。[公式Player定義](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/Player.java)では `playWhenReady` は意図、`isPlaying` は位置が進みメディアが提示されている状態、`STATE_BUFFERING` はすぐに再生できず再生準備中、`STATE_IDLE` は停止／失敗などで通常 `prepare()` が必要な状態。停止要求中もWeb側が実際に再生している状況へこれらを割り当てると矛盾し得る。意図更新だけで `handleSetPlayWhenReady` のFutureを完了することがAPI契約上適切かも未決。MediaSession／通知が各値をどう解釈するかを検証するまでは採用しない。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40821563098)（`2aaa85f`）で3検査が成功した。仮のplayは意図が即時trueとなり、結果待ちに `isPlaying=false`、成功応答後にtrueとなった。一方、仮のpauseは応答前から `isPlaying=false` になり、**独立した偽の遠隔再生フラグはtrueのまま**だった。失敗・タイムアウト・遅延応答後も「表示が停止」だけでは遠隔消音を証明できない。同期リスナーからの遮断・再入と古い応答の拒否もこの限定された模型で確認した。実通信・音声や全ての再入経路の検証ではない。
 
-### MediaSession・コントローラーへの伝播（CI実行待ち）
+### MediaSession・コントローラーへの伝播（API 35エミュレーター）
 
-テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。CIの失敗注釈を改善して再検査する。
+テストAPK限定で `media3-session:1.11.1` を加え、偽Playerに短命なMediaSessionを接続し、同一プロセスのMedia3 `MediaController` とAndroidプラットフォームのMediaControllerで状態を観測する検査を追加。pauseが偽Playerへ到達しても遠隔再生中フラグが残る条件で、コントローラー側の状態・操作可否がどうなるかを確かめる。サービス、MediaStyle通知、実際のWebView・音声・Bluetooth・メディアキーは使わず、テスト終了時にセッションとコントローラーを解放する。あくまでAPI 35上の検査であり、通知表示や外部アプリ認可の保証ではない。テスト用のFuture・状態割当てのAPI適合性は未確定で、製品アプリへの依存追加は行っていない。[再検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40823119109)（`20073cf`）で、Media3コントローラーからpauseを送ると、偽の遠隔再生フラグがtrueのままでも、Media3側では `playWhenReady=false`／`STATE_BUFFERING`／`isPlaying=false`、Android側では `STATE_PAUSED` を観測した。遮断後、Media3側のplay/pauseコマンドは利用不可となった。この特定の仮状態・API 35での結果であり、通知UIや他OS・他アプリの表示、実際の音声停止を保証しない。テスト用セッションはPlayerとともに解放する。
+
+最初の[CI実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40822543930)（`310dd9c`）は計測テスト段階で失敗し、詳細ログが取得できなかったため原因未特定。再検査は成功したが再発しない保証はない。失敗注釈は、通常logcatよりJUnit失敗を優先するよう改善した。
 
 ## サービス・フォーカス・検証順
 
