@@ -16,7 +16,7 @@ AndroidではアンテナOFF・非表示・PiP非稼働のとき、Web Media Ses
 
 ## ライセンス
 
-AndroidX Media3は **MITではなくApache License 2.0**。公式[ライセンス](https://github.com/androidx/media/blob/release/LICENSE)と、採用する各ライブラリ・推移依存のライセンスを確認し、配布時にライセンス文・必要なNOTICEを同梱する。GPL-3.0-or-laterとの組合せは一般に可能だが、素材の権利や最終配布条件は別に確認する。ライブラリはまだ追加していない。
+AndroidX Media3は **MITではなくApache License 2.0**。公式[ライセンス](https://github.com/androidx/media/blob/release/LICENSE)と、採用する各ライブラリ・推移依存のライセンスを確認し、配布時にライセンス文・必要なNOTICEを同梱する。GPL-3.0-or-laterとの組合せは一般に可能だが、素材の権利や最終配布条件は別に確認する。製品アプリにはまだ追加していない。`androidTestImplementation` 限定の `media3-common:1.11.1` 契約検査は[段階Aの設計記録](MEDIA3-STAGE-A-DESIGN-2026-10-29.md)を参照。
 
 ## 推奨構成と未解決点
 

@@ -38,11 +38,11 @@
 
 **重要な反例**：Web側が期限前に再生を開始し、応答だけが遅れた場合、ネイティブのタイムアウトで表示を停止・接続を無効化しても、Web側では音が続き得る。取消や停止を送っても、JSが凍結・終了していれば到達は保証できない。モデルの手動時計・同じ期限値・協調的な取消は実機で保証されておらず、時計の基準、配送順、実際のPlayerの仮状態、JS停止を強制できるか、通信断中の安全策を別途設計・測定する。WebViewに再生主体を残す案の制約として扱い、タイムアウトだけで消音できると主張しない。
 
-## 実ライブラリでの契約検査（試験中）
+## 実ライブラリでの契約検査（API 35エミュレーター）
 
-Android計測テストだけで Apache-2.0 の `androidx.media3:media3-common:1.11.1` を固定し、実 `SimpleBasePlayer` と未完了Futureを使って、仮のplaying表示と `invalidateState()` のタイミングを確かめる試験を追加した。音声、セッション、サービス、Bridgeは作らない。依存は `androidTestImplementation` のみで、CIはアプリのdebug runtime依存にMedia3が混入していないことも検査する。実行結果はCIを参照し、成功するまで未確認として扱う。製品への採用・バージョン決定は別途行う。
+Android計測テストだけで Apache-2.0 の `androidx.media3:media3-common:1.11.1` を固定し、実 `SimpleBasePlayer` と未完了Futureを使って、仮のplaying表示と `invalidateState()` のタイミングを確かめる試験を追加した。音声、セッション、サービス、Bridgeは作らない。依存は `androidTestImplementation` のみで、CIはアプリのdebug runtime依存にMedia3が混入していないことも検査する。[API 35エミュレーターCI](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40813391110)（`18c9676`）で検査とdebug runtime依存グラフの確認が成功。製品への採用・バージョン決定は別途行う。
 
-[同バージョンの公式実装](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/SimpleBasePlayer.java)上、標準のplaceholderは操作成功を先読みする。`getPlaceholderState()` を上書きできる一方、保留中は `invalidateState()` を呼んでも即時には反映されず、保留操作がすべて終了するまで状態更新が遅れる。緊急停止の反映と保留Futureの整理を設計せずに、単にplaceholderを上書きすれば安全になるとは考えない。ライブラリは `@UnstableApi` のため、採用候補を変えた際も同じ検証が必要。
+[同バージョンの公式実装](https://github.com/androidx/media/blob/1.11.1/libraries/common/src/main/java/androidx/media3/common/SimpleBasePlayer.java)上、標準のplaceholderは操作成功を先読みする。`getPlaceholderState()` を上書きできる一方、保留中は `invalidateState()` を呼んでも即時には反映されず、保留操作がすべて終了するまで状態更新が遅れる。試験では、未完了のplayが既定placeholderで `isPlaying=true` となり、失敗で確認済み状態に戻った。確認済み状態を返すplaceholderなら未確認のplay表示を避けられたが、逆にpause保留中に実際の状態を停止へ変え `invalidateState()` しても、Future完了まで `isPlaying=true` のままだった。緊急停止の反映と保留Futureの整理を設計せずに、単にplaceholderを上書きすれば安全になるとは考えない。ライブラリは `@UnstableApi` のため、採用候補を変えた際も同じ検証が必要。
 
 ## サービス・フォーカス・検証順
 
