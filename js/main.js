@@ -273,7 +273,7 @@ addEventListener("keydown", e => {
   if (code === "KeyP" || code === "Escape" || code === "BrowserBack" || code === "GoBack") {
     if (code === "Escape" && e.isTrusted && !e.repeat) escHoldStart();
     if (core.phase === "playing") { e.preventDefault(); window.Trk.play.pauseGame(); }
-    else if (core.phase === "paused") { e.preventDefault(); window.Trk.play.resumeGame(); }
+    else if (core.phase === "paused") { e.preventDefault(); if (e.isTrusted) core.audioSafety?.resume(); window.Trk.play.resumeGame(); }
     else if (core.phase === "title" && core.screen === "settings" && code === "Escape") { e.preventDefault(); core.closeSettings(); }
     return;
   }
@@ -551,8 +551,8 @@ core.$("seEnabled").addEventListener("change", e => {
 core.$("seVolume").addEventListener("input", e => { core.settings.seVolume = Number(e.target.value); core.saveUserPrefs(); });
 core.$("donSeFile").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; window.Trk.media.loadSE(f, 0); });
 core.$("kaSeFile").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; window.Trk.media.loadSE(f, 1); });
-core.$("previewDonBtn").addEventListener("click", () => window.Trk.media.playSE(0, true));
-core.$("previewKaBtn").addEventListener("click", () => window.Trk.media.playSE(1, true));
+core.$("previewDonBtn").addEventListener("click", e => window.Trk.media.playSE(0, true, e.isTrusted));
+core.$("previewKaBtn").addEventListener("click", e => window.Trk.media.playSE(1, true, e.isTrusted));
 core.$("volume").addEventListener("input", e => { core.settings.musicVolume = Number(e.target.value); if (core.settings.musicVolume > 0) core.rememberMusicVolume(core.settings.musicVolume); core.video.volume = core.settings.musicVolume; core.saveUserPrefs(); });
 
 /* ---------- プレイ中・一時停止・リザルト ---------- */

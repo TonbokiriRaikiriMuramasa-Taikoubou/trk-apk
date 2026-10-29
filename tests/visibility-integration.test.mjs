@@ -17,7 +17,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     fs.readFile(file,(err,data) => {if(err) return res.writeHead(404).end(); res.writeHead(200,{"Content-Type":({".html":"text/html",".js":"text/javascript",".css":"text/css",".json":"application/json"})[path.extname(file)]||"application/octet-stream"}); res.end(data);});
   });
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
-  let dom, hidden=false, recording=false; const called=[], failures=[];
+  let dom, hidden=false, recording=false, noisyCallback; const called=[], failures=[];
   const vc=new VirtualConsole(); vc.on("jsdomError",e=>failures.push(e.message));
   try {
     dom=await JSDOM.fromURL(`http://127.0.0.1:${server.address().port}/`, {resources:"usable",runScripts:"dangerously",pretendToBeVisual:true,virtualConsole:vc,beforeParse(w) {
@@ -30,7 +30,7 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
         }
         return add.call(this,type,fn,opts);
       };
-      if(native) w.Capacitor={isNativePlatform:()=>true,Plugins:{App:{addListener:()=>Promise.resolve({remove(){}}),exitApp:()=>Promise.resolve()},TrkDevice:{setPipEligible:async ({enabled})=>({available:true,eligible:enabled}),setOrientationLock:async ({locked})=>({locked})}}};
+      if(native) w.Capacitor={isNativePlatform:()=>true,Plugins:{App:{addListener:()=>Promise.resolve({remove(){}}),exitApp:()=>Promise.resolve()},TrkDevice:{addListener:(name,cb)=>{if(name==="audioBecomingNoisy") noisyCallback=cb; return Promise.resolve({remove(){}});},setPipEligible:async ({enabled})=>({available:true,eligible:enabled}),setOrientationLock:async ({locked})=>({locked})}}};
       Object.defineProperty(w.navigator,"serviceWorker",{value:{register:async()=>({}),getRegistrations:async()=>[]}});
       w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
       w.fetch=async url => String(url).endsWith("assets/mmd/lat-miku/preset.json") ? {ok:true,status:200,json:async()=>JSON.parse(fs.readFileSync(path.join(root,"assets/mmd/lat-miku/preset.json"),"utf8"))} : {ok:false,status:404,json:async()=>({}),text:async()=>""};
@@ -86,6 +86,63 @@ for (const native of [false,true]) test(`visibility keeps playback but delivers 
     core.settings.autoPlay=true; hidden=true; d.dispatchEvent(new w.Event("visibilitychange"));
     assert.equal(gamePauses,1,"auto-play keeps the existing antenna policy");
     w.Trk.play.pauseGame=pauseGame;
+    if (native) {
+      // Real synth listeners with fake Web Audio nodes: both a held note and an
+      // already-released envelope tail must disconnect on the native event.
+      hidden=false; d.dispatchEvent(new w.Event("visibilitychange")); core.phase="title";
+      core.settings.synthModeDisabled=false; core.settings.synthModeFastStart=true;
+      const sources=[], nodes=[], convolvers=[];
+      const param=()=>({value:1,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},cancelScheduledValues(){},cancelAndHoldAtTime(){},setTargetAtTime(){}});
+      const node=()=>{const n={links:new Set(),connect(destination){this.links.add(destination);return destination;},disconnect(destination){if(destination)this.links.delete(destination);else this.links.clear(); this.disconnected=true;},gain:param(),frequency:param(),Q:param()}; nodes.push(n);return n;};
+      const source=()=>{ const s={...node(),detune:param(),start(){},stop(){},disconnected:false,disconnect(){this.disconnected=true;},addEventListener(type,fn){if(type==="ended")this.ended=fn;}}; sources.push(s); return s; };
+      const ac={currentTime:5,state:"running",sampleRate:100,destination:{},createGain:node,createBiquadFilter:node,createBufferSource:source,createMediaElementSource:node,
+        createBuffer:(_channels,length)=>({getChannelData:()=>new Float32Array(length)}),
+        createConvolver:()=>{const n=node(); convolvers.push(n); return n;},
+        createDynamicsCompressor:()=>({...node(),threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()}),
+        createAnalyser:()=>({...node(),frequencyBinCount:32,getByteFrequencyData(){}}),
+        createOscillator:source};
+      w.Trk.media.getAC=()=>ac; w.Trk.media.audioCtx=ac;
+      assert.equal(w.TrkFX.select("piano"),true); assert.ok(convolvers.length>0,"real FX chain uses reverb");
+      const fxOutput=nodes.find(n=>n.links.has(ac.destination)); assert.ok(fxOutput,"FX reaches output initially");
+      const extra=d.createElement("audio"); let extraPauses=0; extra.pause=()=>extraPauses++;
+      assert.ok(w.TrkFX.tapElement(extra));
+      const fxSettings=JSON.stringify(w.TrkFX.current());
+      w.TrkFX={...w.TrkFX,tap:()=>null};
+      const power=d.querySelector("#fxDock .dockPow");
+      power.dispatchEvent(new w.MouseEvent("pointerdown",{bubbles:true,button:0}));
+      await new Promise(resolve=>setTimeout(resolve,250));
+      power.dispatchEvent(new w.MouseEvent("pointerup",{bubbles:true,button:0}));
+      const synth=d.getElementById("synthMode"); assert.equal(synth.hidden,false);
+      const key=synth.querySelector("button[data-midi]");
+      const pointer=(type,id)=>{ const event=new w.MouseEvent(type,{bubbles:true,button:0}); Object.defineProperty(event,"pointerId",{value:id}); key.dispatchEvent(event); };
+      pointer("pointerdown",1); pointer("pointerup",1); pointer("pointerdown",2);
+      assert.equal(sources.length,2,"one release tail and one held voice exist");
+      assert.equal(sources.some(s=>s.disconnected),false);
+      d.querySelector('[data-i18n="owStart"]').click();
+      assert.equal(sources.length,22,"latency calibration schedules 20 future clicks");
+      core.settings.seEnabled=true; w.Trk.media.seBuffers[0]={}; w.Trk.media.playSE(0);
+      assert.equal(sources.length,23,"a custom game sound is active");
+      paused=false; assert.equal(typeof noisyCallback,"function"); noisyCallback();
+      assert.equal(fxOutput.links.has(ac.destination),false,"FX output is isolated immediately");
+      assert.ok(extraPauses>0,"additional FX media is paused");
+      assert.ok(sources.slice(0,2).every(s=>s.disconnected),"output event immediately disconnects held and released synth voices");
+      assert.ok(sources.slice(2,22).every(s=>s.disconnected),"output event cancels future calibration clicks");
+      assert.ok(sources[22].disconnected,"custom game sound is disconnected");
+      w.Trk.media.playSE(0); assert.equal(sources.length,23,"automatic game sounds remain blocked");
+      assert.equal(d.querySelector('[data-i18n="owApply"]').hidden,true);
+      d.querySelector('[data-i18n="owStart"]').click();
+      assert.equal(sources.length,43,"a deliberate new calibration remains possible");
+      sources.slice(2,22).forEach(s=>s.onended?.());
+      assert.ok(sources.slice(23).every(s=>!s.disconnected),"old cleanup leaves new clicks intact");
+      noisyCallback(); assert.ok(sources.slice(23).every(s=>s.disconnected));
+      assert.equal(core.audioSafety.blocked(),true); assert.equal(paused,true);
+      await assert.rejects(core.video.play(),error=>error.name==="AbortError");
+      const oldConvolver=convolvers.at(-1); core.audioSafety.resume(); assert.equal(core.audioSafety.blocked(),false);
+      assert.equal(fxOutput.links.has(ac.destination),true,"FX output returns after explicit resume");
+      assert.equal(oldConvolver.disconnected,true,"old reverb memory is discarded before reconnecting");
+      assert.ok(convolvers.length>1); assert.equal(JSON.stringify(w.TrkFX.current()),fxSettings,"FX settings survive");
+      w.Trk.media.playSE(0); assert.equal(sources.length,44,"game sound works after deliberate resume");
+    }
     assert.deepEqual(failures,[]);
   } finally {if(dom) dom.window.close(); await new Promise(resolve=>server.close(resolve));}
 });

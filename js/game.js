@@ -26,7 +26,7 @@ function countIv() {
   return b ? Math.min(1000, Math.max(350, 60000 / b)) : 750;
 }
 function countTick(k) {
-  if (!core.settings.countdownSE) return;
+  if (!core.settings.countdownSE || core.audioSafety?.blocked()) return;
   const ac = window.Trk.media.getAC(); if (!ac) return;
   if (ac.state === "suspended") ac.resume();
   const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), go = k >= 3;
@@ -34,7 +34,7 @@ function countTick(k) {
   g.gain.setValueAtTime(.0001, t);
   g.gain.exponentialRampToValueAtTime(Math.max(.002, core.settings.seVolume * .5), t + .005);
   g.gain.exponentialRampToValueAtTime(.0001, t + (go ? .25 : .09));
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .3);
+  o.connect(g).connect(ac.destination); window.Trk.media.trackOneShot(g, [o]); o.start(t); o.stop(t + .3);
 }
 function beginLeadIn(resume) {
   const iv = countIv(), p = performance.now();
@@ -111,7 +111,8 @@ function resetRun() {
   updateHud();
 }
 async function startGame() {
-  if (!core.videoReady || !core.chart.length) return;
+  if (!core.videoReady || !core.chart.length || core.audioSafety?.blocked()) return;
+  const audioVersion = core.audioSafety?.version();
   core.emit("beforePlay");
   const ac = window.Trk.media.getAC(); if (ac && ac.state === "suspended") ac.resume();
   if (core.phase === "playing" || core.phase === "paused") core.video.pause();
@@ -123,6 +124,10 @@ async function startGame() {
   if (core.settings.countdown) {
     core.video.volume = 0;
     try { await core.video.play(); core.video.pause(); } catch (_) {}
+    if (audioVersion !== core.audioSafety?.version() || core.audioSafety?.blocked()) {
+      if (core.audioSafety?.blocked() && core.video.volume === 0) core.video.volume = core.settings.musicVolume;
+      return;
+    }
     try { core.video.currentTime = runShort ? shortStart(runShort) : 0; } catch (_) {}
     core.video.volume = core.settings.musicVolume;
     core.showScreen(null); core.setPhase("playing");
@@ -136,7 +141,11 @@ async function startGame() {
   core.showScreen(null); core.setPhase("playing");
   if (typeof poke === "function") poke();
   try { await core.video.play(); }
-  catch (_) { core.setPhase("title"); core.showScreen("selectScreen"); core.setStatus("loadStatus", "playError"); return; }
+  catch (_) {
+    if (audioVersion !== core.audioSafety?.version()) return;
+    core.setPhase("title"); core.showScreen("selectScreen"); core.setStatus("loadStatus", "playError"); return;
+  }
+  if (audioVersion !== core.audioSafety?.version() || core.audioSafety?.blocked()) return;
   setCaption("capStart", null, 0);
 }
 function pauseGame() {
@@ -147,7 +156,7 @@ function pauseGame() {
   core.setPhase("paused"); core.video.pause(); core.setStatus("pauseStatus", null); core.showScreen("pauseScreen");
 }
 async function resumeGame() {
-  if (core.phase !== "paused") return;
+  if (core.phase !== "paused" || core.audioSafety?.blocked()) return;
   core.showScreen(null); core.setPhase("playing");
   if (typeof poke === "function") poke();
   if (pausedInLeadIn) { pausedInLeadIn = false; beginLeadIn(false); return; }

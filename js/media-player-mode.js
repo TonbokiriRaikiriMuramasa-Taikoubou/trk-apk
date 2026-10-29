@@ -161,6 +161,7 @@ function mediaSessionIsPlaying() {
   return reverseActive ? !reverseLoading : !core.video.paused && !core.video.ended;
 }
 core.mediaSessionIsPlaying = mediaSessionIsPlaying;
+core.on("audioOutputInterrupted", () => { stopReverse(false, true); });
 let loopTimer = 0;
 let loopA = null, loopB = null, loopActive = false, loopKeyDown = false;
 let wallOverlay, wallClockNode, wallDateNode, wallNode, wallStyleNode, wallClockCheck, wallPlaybackNode, wallTriggerNode, wallFileNode, wallResetNode;
@@ -493,6 +494,7 @@ function reverseTick() {
   renderMedia();
 }
 async function startReverseAt(position, restart = false) {
+  if (core.audioSafety?.blocked()) return;
   if (!core.videoReady || !Number.isFinite(core.video.duration) || core.video.duration <= 0) return;
   if (reverseLoading && !restart) return;
   const attempt = ++reverseAttempt;
@@ -751,7 +753,8 @@ function nextMediaSong(dir = 1) {
   return list[(i + dir + list.length) % list.length];
 }
 async function playSong(it, fromStart = true) {
-  if (!it || typeof selectSong !== "function") return;
+  if (!it || typeof selectSong !== "function" || core.audioSafety?.blocked()) return;
+  const audioVersion = core.audioSafety?.version();
   if (sleepTrackMode || sleepChapterEnd) { sleepTrackMode = false; sleepChapterEnd = 0; renderMedia(); }  /* 💤 手で別の曲を選んだら「この曲／チャプターの終わり」スリープは解除（trk164/170） */
   if (reverseActive || reverseLoading) stopReverse(false, true);
   clearMediaLoop(true);
@@ -766,7 +769,7 @@ async function playSong(it, fromStart = true) {
   } else if (!core.videoReady) {
     await window.Trk.library.selectSong(it);
   }
-  if (!mediaActive() || core.currentSong !== it || !core.videoReady || window.TrkApkPip?.allowsPlaybackStart?.() === false) { renderMedia(); return; }
+  if (audioVersion !== core.audioSafety?.version() || core.audioSafety?.blocked() || !mediaActive() || core.currentSong !== it || !core.videoReady || window.TrkApkPip?.allowsPlaybackStart?.() === false) { renderMedia(); return; }
   if (fromStart) { try { core.video.currentTime = savedMediaPosition({ resume: true }); } catch (_) {} }  /* ⏪ 続きから再生のときだけ巻き戻す（trk164） */
   core.video.muted = false; core.video.volume = core.settings.musicVolume; setRate(mediaRate);
   try { await core.video.play(); } catch (_) { showMediaStatus("mediaLoadFailed"); }
@@ -876,12 +879,14 @@ function installMediaSessionObservers() {
   core.on("songTags", song => { if (song && core.currentSong && song.key === core.currentSong.key) updateMediaSessionMetadata(); });
 }
 async function sessionSong(dir) {
+  if (core.audioSafety?.blocked()) return;
+  const audioVersion = core.audioSafety?.version();
   const pick = dir > 0 ? window.Trk.library.nextSong : window.Trk.library.prevSong;
   if (typeof pick !== "function" || typeof selectSong !== "function") return;
   const it = pick(); if (!it) return;
   if (core.phase !== "title" && typeof toTitle === "function") window.Trk.play.toTitle();
   await window.Trk.library.selectSong(it);
-  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
+  if (audioVersion !== core.audioSafety?.version() || core.audioSafety?.blocked() || window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
   if (core.settings.autoPlay && core.phase === "title" && core.videoReady && core.chart.length && core.currentSong === it && typeof startGame === "function") window.Trk.play.startGame();
 }
 function installMediaSession() {
@@ -894,6 +899,7 @@ function installMediaSession() {
   // Bluetooth or notification commands must never reverse the requested state.
   act("play", () => {
     if (!mayStart()) return;
+    core.audioSafety?.resume();
     if (mediaActive()) {
       if (!reverseActive && !reverseLoading && (core.video.paused || core.video.ended)) playPause();
     } else if (core.phase === "paused") window.Trk.play.resumeGame();
@@ -910,8 +916,8 @@ function installMediaSession() {
   });
   // Selecting a track can auto-start preview or game playback, so do not
   // dispatch these commands when background starts are disallowed.
-  act("previoustrack", () => { if (mayStart()) return mediaActive() ? stepMedia(-1) : sessionSong(-1); });
-  act("nexttrack", () => { if (mayStart()) return mediaActive() ? stepMedia(1) : sessionSong(1); });
+  act("previoustrack", () => { if (mayStart()) { core.audioSafety?.resume(); return mediaActive() ? stepMedia(-1) : sessionSong(-1); } });
+  act("nexttrack", () => { if (mayStart()) { core.audioSafety?.resume(); return mediaActive() ? stepMedia(1) : sessionSong(1); } });
   act("seekbackward", d => seekBy(-(d && d.seekOffset || 10)));
   act("seekforward", d => seekBy(d && d.seekOffset || 10));
   act("seekto", d => { if (Number.isFinite(d && d.seekTime) && core.videoReady) { if (reverseActive || reverseLoading) stopReverse(false, true); core.video.currentTime = Math.max(0, Math.min(core.video.duration || 0, d.seekTime)); } });
@@ -1834,7 +1840,10 @@ function buildMedia() {
     const videoKey = (core.settings.videoKeys || []).indexOf(code);
     if (videoKey >= 0 && (mediaActive() || core.phase === "title" || core.phase === "paused")) {
       e.preventDefault(); e.stopImmediatePropagation();
-      if (!e.repeat && (!wallActive || videoKey === WALL_KEY_INDEX)) videoAction(videoKey);
+      if (!e.repeat && (!wallActive || videoKey === WALL_KEY_INDEX)) {
+        if (e.isTrusted && (videoKey === 4 || videoKey === REVERSE_KEY_INDEX)) core.audioSafety?.resume();
+        videoAction(videoKey);
+      }
       return;
     }
     if (!mediaOpen) return;
@@ -1844,11 +1853,11 @@ function buildMedia() {
     if (code === core.settings.mediaExitKey || code === "Escape" || code === "BrowserBack" || code === "GoBack") { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) requestMediaExit(); return; }
     if (wallActive) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (isTyping(e.target)) return;
-    if (e.code === "Space") { e.preventDefault(); e.stopImmediatePropagation(); playPause(); }
+    if (e.code === "Space") { e.preventDefault(); e.stopImmediatePropagation(); if (e.isTrusted) core.audioSafety?.resume(); playPause(); }
     else if (e.code === "ArrowLeft") { e.preventDefault(); e.stopImmediatePropagation(); seekBy(-10); }
     else if (e.code === "ArrowRight") { e.preventDefault(); e.stopImmediatePropagation(); seekBy(10); }
-    else if (e.code === "KeyN") { e.preventDefault(); e.stopImmediatePropagation(); stepMedia(1); }
-    else if (e.code === "KeyP") { e.preventDefault(); e.stopImmediatePropagation(); stepMedia(-1); }
+    else if (e.code === "KeyN") { e.preventDefault(); e.stopImmediatePropagation(); if (e.isTrusted) core.audioSafety?.resume(); stepMedia(1); }
+    else if (e.code === "KeyP") { e.preventDefault(); e.stopImmediatePropagation(); if (e.isTrusted) core.audioSafety?.resume(); stepMedia(-1); }
   }, true);
   addEventListener("keyup", e => {
     if (mediaExitBinding !== null || videoBinding !== null || window.Trk.overlay.is("synth") || window.Trk.overlay.is("study") || !mediaActive()) return;

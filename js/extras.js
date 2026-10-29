@@ -61,14 +61,32 @@ const signed = v => (v > 0 ? "+" : "") + v;
 /* ============ 🎯 オフセット測定 ============ */
 const OW_N = 20, OW_IV = 500, OW_SKIP = 4;          // 120BPMで20回。最初の4回は慣らし
 const ow = { running:false, beats:[], taps:[], timer:0, value:null };
+const owSources = new Set();
 let owStatus, owApply, owTapBtn;
 function owClick(ac, t) {
   const o = ac.createOscillator(), g = ac.createGain();
   o.type = "square"; o.frequency.value = 1500;
   g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(.05, core.settings.seVolume), t + .002);
   g.gain.exponentialRampToValueAtTime(.0001, t + .05);
+  const voice = { o, g }; owSources.add(voice);
+  o.onended = () => { owSources.delete(voice); try { o.disconnect(); g.disconnect(); } catch (_) {} };
   o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .06);
 }
+// Calibration schedules clicks up to ten seconds ahead; cancel even those
+// which have not started when Android reports an output interruption.
+core.on("audioOutputInterrupted", () => {
+  for (const voice of owSources) {
+    try { voice.o.stop(); } catch (_) {}
+    try { voice.o.disconnect(); } catch (_) {}
+    try { voice.g.disconnect(); } catch (_) {}
+  }
+  owSources.clear();
+  if (ow.running) {
+    clearTimeout(ow.timer); ow.running = false; ow.value = null;
+    if (owApply) owApply.hidden = true;
+    if (owStatus) owStatus.textContent = tr("owFail");
+  }
+});
 function owStart() {
   const ac = window.Trk.media.getAC(); if (!ac) { owStatus.textContent = tr("seUnavailable"); return; }
   if (ac.state === "suspended") ac.resume();

@@ -585,22 +585,42 @@ async function importChartFile(file, sid = "importStatus") {
 
 /* ---------- ヒットSE ---------- */
 const seBuffers = [null, null], seFiles = [null, null]; let noiseBuf = null;
-function playSE(lane, force = false) {
-  if (!core.settings.seEnabled && !force) return;
+// Each one-shot has its own destination gain: interrupting it never changes
+// saved volume or silences a later, explicitly started sound.
+const activeOneShots = new Set();
+function trackOneShot(out, sources) {
+  const voice = { out, sources, pending:new Set(sources) }; activeOneShots.add(voice);
+  for (const source of sources) source.addEventListener("ended", () => {
+    voice.pending.delete(source);
+    if (!voice.pending.size) { activeOneShots.delete(voice); try { out.disconnect(); } catch (_) {} }
+  }, { once:true });
+}
+core.on("audioOutputInterrupted", () => {
+  for (const voice of activeOneShots) {
+    try { voice.out.disconnect(); } catch (_) {}
+    for (const source of voice.sources) {
+      try { source.stop(); } catch (_) {}
+      try { source.disconnect(); } catch (_) {}
+    }
+  }
+  activeOneShots.clear();
+});
+function playSE(lane, force = false, explicitPreview = false) {
+  if ((!core.settings.seEnabled && !force) || (core.audioSafety?.blocked() && !explicitPreview)) return;
   const ac = getAC(); if (!ac) return;
   if (ac.state === "suspended") ac.resume();
   const t = ac.currentTime, out = ac.createGain();
   out.gain.value = core.settings.seVolume; out.connect(ac.destination);
-  if (seBuffers[lane]) { const s = ac.createBufferSource(); s.buffer = seBuffers[lane]; s.connect(out); s.start(t); return; }
+  if (seBuffers[lane]) { const s = ac.createBufferSource(); s.buffer = seBuffers[lane]; s.connect(out); trackOneShot(out, [s]); s.start(t); return; }
   const o = ac.createOscillator(), e = ac.createGain();
   if (lane === 0) {
     o.type = "sine"; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(58, t + .14);
     e.gain.setValueAtTime(1, t); e.gain.exponentialRampToValueAtTime(.001, t + .2);
-    o.connect(e).connect(out); o.start(t); o.stop(t + .22);
+    o.connect(e).connect(out); trackOneShot(out, [o]); o.start(t); o.stop(t + .22);
   } else {
     o.type = "triangle"; o.frequency.setValueAtTime(1350, t); o.frequency.exponentialRampToValueAtTime(820, t + .05);
     e.gain.setValueAtTime(.7, t); e.gain.exponentialRampToValueAtTime(.001, t + .08);
-    o.connect(e).connect(out); o.start(t); o.stop(t + .1);
+    o.connect(e).connect(out);
     if (!noiseBuf) {
       noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * .05), ac.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -608,7 +628,8 @@ function playSE(lane, force = false) {
     const nz = ac.createBufferSource(), hp = ac.createBiquadFilter(), ng = ac.createGain();
     nz.buffer = noiseBuf; hp.type = "highpass"; hp.frequency.value = 2500;
     ng.gain.setValueAtTime(.4, t); ng.gain.exponentialRampToValueAtTime(.001, t + .05);
-    nz.connect(hp).connect(ng).connect(out); nz.start(t);
+    nz.connect(hp).connect(ng).connect(out); trackOneShot(out, [o, nz]);
+    o.start(t); o.stop(t + .1); nz.start(t);
   }
 }
 async function loadSE(file, lane) {
@@ -645,7 +666,7 @@ window.seFiles = seFiles;
 window.setBackground = setBackground;
 /* 領域（window.Trk.media）：公開名の正規の場所。旧名（window.X）は別名として残す（利用者の決定） */
 window.Trk = window.Trk || {};
-window.Trk.media = Object.assign(window.Trk.media || {}, { CHART_FILE_MAX, buildChart, decodeAudio, estimateLevel, exportChart, generateNotes, getAC, importChartFile, loadMedia, loadSE, loudnessDb, playSE, rmsAt, seBuffers, seFiles, setBackground, codecLabel, explainAudioFailure, explainAudioWarning, explainLoadFailure, explainProbe, mimeHintFor, probeContainer, withMimeHint });
+window.Trk.media = Object.assign(window.Trk.media || {}, { CHART_FILE_MAX, buildChart, decodeAudio, estimateLevel, exportChart, generateNotes, getAC, importChartFile, loadMedia, loadSE, loudnessDb, playSE, trackOneShot, rmsAt, seBuffers, seFiles, setBackground, codecLabel, explainAudioFailure, explainAudioWarning, explainLoadFailure, explainProbe, mimeHintFor, probeContainer, withMimeHint });
 Object.defineProperty(window.Trk.media, "applyChartData", { configurable:true, get:() => applyChartData, set:v => { applyChartData = v; } });
 Object.defineProperty(window.Trk.media, "audioCtx", { configurable:true, get:() => audioCtx, set:v => { audioCtx = v; } });
 Object.defineProperty(window.Trk.media, "chartToData", { configurable:true, get:() => chartToData, set:v => { chartToData = v; } });

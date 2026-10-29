@@ -1026,6 +1026,7 @@ function menuVideoTick(event) {
     return;
   }
   if (core.video.paused) {
+    if (core.audioSafety?.blocked()) return;
     if (!core.video.muted) { core.video.muted = true; menuMutedByUs = true; }
     core.video.play().then(() => { menuPlayingByUs = true; }).catch(() => {});
   } else {
@@ -1371,9 +1372,10 @@ addEventListener("DOMContentLoaded", () => {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  pvPlayPause.addEventListener("click", () => {
+  pvPlayPause.addEventListener("click", event => {
     if (!core.videoReady) return;
     if (core.video.paused) {
+      if (event.isTrusted) core.audioSafety?.resume();
       core.video.play().then(() => { pvPlayPause.textContent = "⏸"; }).catch(() => {});
     } else {
       core.video.pause();
@@ -1449,7 +1451,7 @@ addEventListener("DOMContentLoaded", () => {
   }
   /* 「確認」タブを開いている間は、止まっていたら（音なしで）動かす */
   function pvKeepPlaying() {
-    if (!previewOn() || core.settings.previewEnabled) return;
+    if (!previewOn() || core.settings.previewEnabled || core.audioSafety?.blocked()) return;
     if (core.video.paused && core.videoReady) {
       if (!core.video.muted) { core.video.muted = true; pvMutedByUs = true; }
       core.video.play().then(() => { pvPlayedByUs = true; }).catch(() => {});

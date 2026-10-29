@@ -124,12 +124,13 @@ function catchHitPos(n) {      // game.js から使います（ヒットエフ�
 
 /* ============ 🚀 ぶっ飛ばし ============ */
 function blastSound() {
+  if (core.audioSafety?.blocked()) return;
   const ac = window.Trk.media.getAC(); if (!ac) return;
   if (ac.state === "suspended") ac.resume();
   const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
   o.type = "sawtooth"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(1400, t + .35);
   g.gain.setValueAtTime(Math.max(.03, core.settings.seVolume * .5), t); g.gain.exponentialRampToValueAtTime(.0001, t + .45);
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .5);
+  o.connect(g).connect(ac.destination); window.Trk.media.trackOneShot(g, [o]); o.start(t); o.stop(t + .5);
 }
 /* ぶっ飛ばし中にニトロ缶を取った（重なった）：画面に見えている荷物を取った扱いで消して、ぶっ飛ばしを終える（trk149）。
    AUTO のときは荷物の判定を AUTO に任せ、ニトロ缶と終了だけ行う。 */

@@ -34,6 +34,8 @@ else
   python3 - <<'PY'
 import glob, sys, xml.etree.ElementTree as ET
 expected = {'freshStartupBackAndNativeOrientationBridge',
+            'rendererCrashShowsRecoveryAndRetryStartsGuarded',
+            'simulatedNoisyCallbackReachesWebViewAndBlocksRestart',
             'pictureInPictureRatioUsesVideoAndAndroidLimits',
             'nativePictureInPictureEntryNotifiesWebView'}
 found = {}

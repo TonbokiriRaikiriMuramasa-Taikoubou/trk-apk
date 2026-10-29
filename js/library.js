@@ -4167,6 +4167,7 @@ previewSetBtn.addEventListener("contextmenu", e => e.preventDefault());   /* 長
 
 /* ---------- プレビュー再生 ---------- */
 let previewPending = false, fadeRaf = 0;
+core.on("audioOutputInterrupted", () => { previewPending = false; cancelAnimationFrame(fadeRaf); });
 function previewStartFor() {
   if (core.settings.mediaStartFromZero === true) return 0;   /* ⏮ 常に最初から再生（trk193） */
   const fp = core.fingerprint || (core.currentSong && isFinite(video.duration) ? `${core.currentSong.size}:${Math.round(video.duration * 10)}` : "");
@@ -4188,7 +4189,7 @@ function fadeTo(target, ms) {
 }
 function startPreview() {
   // A selection can finish loading after Android has moved to the background.
-  if (window.TrkApkPip?.allowsPlaybackStart?.() === false) return;
+  if (window.TrkApkPip?.allowsPlaybackStart?.() === false || core.audioSafety?.blocked()) return;
   if (window._trkMediaPlayerMode || !core.settings.previewEnabled || core.phase !== "title" || !core.currentSong || !video.src || !isFinite(video.duration)) return;
   if (!video.paused) return;
   cancelAnimationFrame(fadeRaf);
@@ -4250,6 +4251,7 @@ bannerPauseSync();
 core.$("songBanner").addEventListener("click", e => {
   const act = bannerPauseAction({ enabled: core.settings.bannerPause, mediaMode: window._trkMediaPlayerMode,
     target: !!e.target.closest("button, input, a, label"), phase: core.phase, hasSong: !!(core.currentSong && video.src) });
+  if (e.isTrusted && (act === "resume" || (act === "preview" && video.paused))) core.audioSafety?.resume();
   if (act === "pause") window.Trk.play.pauseGame();
   else if (act === "resume") window.Trk.play.resumeGame();
   else if (act === "preview") { if (video.paused) video.play().catch(() => {}); else video.pause(); }   /* 選曲中のプレビュー */
@@ -4529,6 +4531,7 @@ async function selectSong(it) {
   if (core.phase !== "title" || !it) return;
   if (it.ghost) { void relinkGhost(it); return; }   /* 📄参照のみ（本体なし）は、選ぶと選び直しを開く */
   const selection = ++songSelectToken;
+  const audioVersion = core.audioSafety?.version();
   if (it.source === "builtin" && !it.file) {
     try { it = await materializeBuiltinSong(it); }
     catch (error) {
@@ -4571,7 +4574,7 @@ async function selectSong(it) {
   if (canExtractSongArt(it)) void loadSongTags(it);
   await applySongBackground(it);
   if (core.currentSong !== it) return;
-  previewPending = true;
+  previewPending = !core.audioSafety?.blocked() && audioVersion === core.audioSafety?.version();
   const ok = await window.Trk.media.loadMedia(it.file, { title:songDisplayTitle(it), onReady:() => restoreSongState(it) });
   if (!ok || core.currentSong !== it) return;
   renderLib(); renderBanner(); updateSpBuilder(); renderSeedTools();
@@ -4627,11 +4630,12 @@ function prevSong() {
   return list[(i - 1 + list.length) % list.length];
 }
 async function radioGo(next) {
+  const audioVersion = core.audioSafety?.version();
   cancelRadio();
-  if (core.phase !== "ended" || !core.settings.radio) return;
+  if (core.audioSafety?.blocked() || core.phase !== "ended" || !core.settings.radio) return;
   window.Trk.play.toTitle();
   await selectSong(next);
-  if (core.phase === "title" && core.videoReady && core.chart.length && core.currentSong === next) window.Trk.play.startGame();
+  if (audioVersion === core.audioSafety?.version() && !core.audioSafety?.blocked() && core.phase === "title" && core.videoReady && core.chart.length && core.currentSong === next) window.Trk.play.startGame();
 }
 on("screen", id => {
   if (id !== "endScreen" || !core.settings.radio) return;
