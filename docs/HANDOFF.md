@@ -4,6 +4,8 @@
 
 ## 1. 現在地と資料
 
+**進捗の早見表：** M0ビルド基盤は整備済み、M1実機スモークは未着手、M2安定化は試作・継続中、M3 Media3は設計段階、M4 SAF／共有とM5正式配布は未実施。段階ごとの成果・検証範囲・次の優先順位は [進捗整理](PROGRESS-2026-10-29.md) を参照。マージやDriveへの掲載は音声・Bluetoothの実機合格を意味しない。
+
 - このリポジトリは `TonbokiriRaikiriMuramasa-Taikoubou/trk-apk`。上流 `trk` の `2b3383dc5051eb561213a7d4f875307a9e02b975`（trk214／1.1.4）を基にしたCapacitor 8のAndroid版。Drive上の1.1.4 ZIPとのバイト一致は未確認。
 - 仮アプリID `com.trk.agrg`、開発版 `0.1.0-dev`、minSdk 24、target／compileSdk 36。ゲーム機能・Web再生・書斎などを引き継ぐが、Androidでの動作は機能ごとに確認する。
 - **仕様の固定記録**：[APK-SPEC-2026-10-29.md](APK-SPEC-2026-10-29.md) は `9c53d5c` 時点の上流との差分と未検証・今後の方針をまとめたもの。[同一ファイルのDrive版](https://drive.google.com/file/d/1JwyQL83Hz55Qnl1vP01QSqUuWjNtoMbU/view)のSHA-256は `57dcf085bf026278fb74ab811cf08913717d9388f995ff4806dcb7aac08e7081`。以降の仕様変更は本HANDOFFと新しい記録を優先する。
@@ -60,7 +62,7 @@ cd android && ./gradlew assembleDebug
 `android/` は生成済みなので `cap:add:android` は再実行しない。`cap:sync` はGit管理外の `mobile-web/` と `android/app/src/main/assets/public/` を再生成。`assets/vendor/` は固定依存物で内部の `dist/`・`build/` も必要。変更時は `tools/vendor-lock.json` と `npm run check:vendor:npm` を確認。
 
 - `npm run check`：**759件成功、37スイート**。`tools/check-security.mjs` 等の静的検査も含む。`cap:sync`、`git diff --check` も成功。jsdom／モックはAndroid描画・音声・Bluetoothの検証ではない。
-- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40790038824)：renderer復旧、シンセ・測定音・ゲームSE・FXの切断対策を含む `e707a12` で成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
+- [debug APKビルド](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40790308201)：renderer復旧、シンセ・測定音・ゲームSE・FXの切断対策を含む `fbc3b32` で成功。Actions成果物は7日間保存。debug鍵はランナーごとに変わり得るため、別ビルドを上書きできない場合がある。既存データを消す前にバックアップを確認する。正式配布用の署名ではない。
 - [Android API 35エミュレータースモーク](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40750871895)：`0d24a96` で初回起動、Backキーによる初回案内終了、向き固定ブリッジ、PiP比率の計算・橋渡しが成功。物理タッチ・10秒長押し・PiP移行や表示・音声・Bluetoothは検査していない。`9c53d5c` までの後続差分は文書更新。
 - [追加のAPI 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755872214)（`2db4f58`）で、PiPへの明示的なネイティブ移行、ActivityのPiP状態、WebViewへの開始通知を確認。PiP非対応・無効の場合はスキップし、テスト結果の欠落はCIエラーにする。以前の実行では[instrumentationが切断](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40754911823)され、[次の実行](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40755698374)もエミュレーター準備段階で失敗した。原因は未特定で、以後の実行でも再発を確認する。成功した後続実行も自動PiP、動画・音声再生、復帰／終了時の通知順序や物理端末を検証しない。
 - [API 35エミュレーター検査](https://github.com/TonbokiriRaikiriMuramasa-Taikoubou/trk-apk/actions/runs/40781914878)（`4e09306`）で `chrome://crash` によりrendererを2回終了し、その都度の復旧画面・手動再起動・テスト用localStorageの保持・再生抑止を確認。noisy通知もpluginから模擬したが、OSの実際のイヤホン切断や音声出力は再現していない。PiP中の異常終了、強制終了、実機・他OSは未検証。
